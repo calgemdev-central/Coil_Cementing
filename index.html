@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CT Cement Plug Simulator</title>
+<style>
+    :root, :root[data-theme="dark"] {
+        --bg-dark: #0a0f1a; --panel-bg: #141d2e; --border-color: #334663;
+        --text-main: #f1f5f9; --text-muted: #b6c2d2;
+        --accent-blue: #38bdf8; --accent-green: #4ade80; --accent-red: #f87171; --accent-amber: #fbbf24;
+        --input-bg: #0b1220; --input-text: #ffffff; --box-bg: #0b1220;
+        --btn-bg: #26385a; --btn-hover: #34507e; --btn-text: #f1f5f9; --on-accent: #06101f;
+        --warn-bg: #2a1f06; --warn-text: #fde68a; --err-bg: #2a0f14;
+        --run-bg: #0f2a1c; --reset-bg: #2a1418; --credit: #64748b;
+    }
+    :root[data-theme="light"] {
+        --bg-dark: #e8edf3; --panel-bg: #ffffff; --border-color: #c3ccd8;
+        --text-main: #0f172a; --text-muted: #334155;
+        --accent-blue: #0369a1; --accent-green: #15803d; --accent-red: #b91c1c; --accent-amber: #b45309;
+        --input-bg: #f8fafc; --input-text: #0f172a; --box-bg: #f1f5f9;
+        --btn-bg: #e2e8f0; --btn-hover: #cbd5e1; --btn-text: #0f172a; --on-accent: #ffffff;
+        --warn-bg: #fef3c7; --warn-text: #78350f; --err-bg: #fee2e2;
+        --run-bg: #dcfce7; --reset-bg: #fee2e2; --credit: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 12px; font-size: 11px; }
+    .dashboard { display: flex; gap: 15px; max-width: 1500px; margin: 0 auto; align-items: stretch;
+        height: calc(100vh - 118px); min-height: 640px; }
+    .control-panel { flex: 0 0 400px; background: var(--panel-bg); border: 1px solid var(--border-color);
+        border-radius: 6px; display: flex; flex-direction: column; gap: 6px; padding: 10px;
+        overflow-y: auto; scrollbar-width: thin; }
+    .canvas-panel { flex: 1; min-width: 0; background: var(--panel-bg); border: 1px solid var(--border-color);
+        border-radius: 6px; padding: 12px; display: flex; flex-direction: column; }
+    .canvas-wrap { position: relative; flex: 1; min-height: 460px; width: 100%; }
+    canvas { position: absolute; top: 0; left: 0; border: 1px solid var(--border-color); border-radius: 4px; }
+    h2 { margin: 2px 0 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent-blue);
+        border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
+    .canvas-head { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 6px; }
+    .canvas-head h2 { border-bottom: none; margin: 0; }
+    .btn-theme { position: absolute; right: 0; top: -2px; padding: 3px 10px; text-align: center; border: 1px solid var(--border-color); }
+    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
+    .grid-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px; }
+    table.bk { width: 100%; border-collapse: collapse; font-size: 10.5px; table-layout: auto; }
+    table.bk td:first-child { width: 34%; }
+    table.bk th { color: var(--text-muted); font-weight: 600; text-align: right; padding: 2px 3px; border-bottom: 1px solid var(--border-color); }
+    table.bk td { padding: 2px 3px; text-align: right; font-family: monospace; font-weight: bold; color: var(--accent-blue); white-space: nowrap; }
+    table.bk td:first-child { text-align: left; font-family: inherit; font-weight: normal; color: var(--text-main); white-space: normal; }
+    table.bk tr.hdr td { padding-top: 5px; font-family: inherit; font-weight: 600; color: var(--accent-blue); font-size: 10px;
+        text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); text-align: left; }
+    table.bk tr.sub td { font-size: 9.5px; font-weight: normal; color: var(--text-muted); }
+    table.bk td.green { color: var(--accent-green); } table.bk td.amber { color: var(--accent-amber); } table.bk td.red { color: var(--accent-red); }
+    .input-group { display: flex; flex-direction: column; gap: 2px; }
+    label { color: var(--text-muted); font-weight: 500; }
+    input, select { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--input-text);
+        padding: 3px 6px; border-radius: 4px; font-size: 11px; }
+    input:focus, select:focus { border-color: var(--accent-blue); outline: none; }
+    input.bad { border-color: var(--accent-red); }
+    input::placeholder { color: var(--text-muted); opacity: 0.7; }
+    .calc-box { background: var(--box-bg); border-left: 3px solid var(--accent-blue); padding: 5px 8px; border-radius: 0 4px 4px 0; }
+    .calc-box.green-variant { border-left-color: var(--accent-green); }
+    .calc-box.alert-variant { border-left-color: var(--accent-red); }
+    .calc-box h3 { margin: 0 0 3px 0; font-size: 11px; }
+    .row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 1px; }
+    .val { font-weight: bold; color: var(--accent-blue); font-family: monospace; text-align: right; }
+    .val.green { color: var(--accent-green); } .val.amber { color: var(--accent-amber); } .val.red { color: var(--accent-red); }
+    .note { color: var(--text-muted); font-size: 9.5px; line-height: 1.3; }
+    .msg-box { background: var(--warn-bg); border-left: 3px solid var(--accent-amber); padding: 5px 8px;
+        border-radius: 4px; display: none; margin-bottom: 8px; }
+    .msg-box.has-error { background: var(--err-bg); border-left-color: var(--accent-red); }
+    .msg-box ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 2px 22px; }
+    .msg-box li { font-size: 10.5px; line-height: 1.3; }
+    .msg-box li.err { color: var(--accent-red); } .msg-box li.warn { color: var(--warn-text); }
+    .fill-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--border-color);
+        border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+    .fill-cell { background: var(--box-bg); padding: 4px 8px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .fill-cell .k, .fill-cell .s { color: var(--text-muted); font-size: 9.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fill-cell .v small { display: block; font-size: 9.5px; font-weight: normal; color: var(--text-muted); line-height: 1.1; }
+    .fill-cell .v { font-family: monospace; font-weight: bold; font-size: 13px; color: var(--text-main); white-space: nowrap; }
+    .v.pos { color: var(--accent-green); } .v.neg { color: var(--accent-red); } .v.hl { color: var(--accent-blue); }
+    @media (max-width: 1250px) { .fill-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    button { background: var(--btn-bg); color: var(--btn-text); border: none; padding: 5px 6px; font-size: 10.5px;
+        font-weight: 600; border-radius: 4px; cursor: pointer; text-align: left; }
+    button:hover { background: var(--btn-hover); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.done::after { content: "  ✓"; color: var(--accent-green); }
+    button.active { background: var(--accent-blue); color: var(--on-accent); }
+    button.active.done::after { color: var(--on-accent); }
+    .btn-grid { display: grid; grid-template-columns: 1fr; gap: 4px; }
+    .seg { display: grid; grid-template-columns: 1fr 1.5fr 1.2fr; gap: 0; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; }
+    .seg button { border-radius: 0; text-align: center; padding: 5px 4px; border-right: 1px solid var(--border-color); }
+    .seg button:last-child { border-right: none; }
+    .seg button.on { background: var(--accent-blue); color: var(--on-accent); }
+    .btn-train { border: 1px solid var(--accent-amber); color: var(--accent-amber); background: var(--warn-bg); }
+    .btn-train:hover { background: var(--accent-amber); color: var(--on-accent); }
+    .btn-train.on { background: var(--accent-red); border-color: var(--accent-red); color: #fff; }
+    .train-box label { color: var(--accent-amber); }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 2px; }
+    .btn-run { background: var(--run-bg); border: 1px solid var(--accent-green); color: var(--accent-green); font-weight: bold; padding: 7px 0; text-align: center; }
+    .btn-run:hover { background: var(--accent-green); color: var(--on-accent); }
+    .btn-pause { border: 1px solid var(--border-color); padding: 7px 0; text-align: center; font-weight: bold; }
+    .btn-reset { background: var(--reset-bg); border: 1px solid var(--accent-red); color: var(--accent-red); font-weight: bold; padding: 7px 0; text-align: center; }
+    .btn-reset:hover { background: var(--accent-red); color: var(--on-accent); }
+    .speed-row { display: flex; align-items: center; gap: 8px; }
+    .speed-row select { flex: 1; }
+    .view-row { flex: 1; display: flex; gap: 8px; min-height: 0; }
+    .view-row .canvas-wrap { flex: 1; min-width: 0; }
+    .schedule { flex: 0 0 400px; display: flex; flex-direction: column; border: 1px solid var(--border-color);
+        border-radius: 4px; background: var(--box-bg); min-height: 0; }
+    .schedule.hidden { display: none; }
+    .sched-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 8px;
+        border-bottom: 1px solid var(--border-color); }
+    .sched-head b { color: var(--accent-blue); letter-spacing: 0.6px; font-size: 11px; }
+    .sched-head label { display: flex; align-items: center; gap: 4px; font-size: 10px; }
+    .sched-head input { width: 58px; padding: 2px 4px; }
+    .sched-scroll { flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: thin; }
+    table.sched { width: 100%; border-collapse: collapse; font-size: 10px; }
+    table.sched th { position: sticky; top: 0; background: var(--panel-bg); color: var(--text-muted); font-weight: 600;
+        text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--border-color); white-space: nowrap; z-index: 1; }
+    table.sched th:nth-child(2), table.sched td:nth-child(4) { text-align: left; }
+    table.sched td { padding: 2px 4px; text-align: right; font-family: monospace; white-space: nowrap;
+        border-bottom: 1px solid color-mix(in srgb, var(--border-color) 45%, transparent); }
+    table.sched td.mk { width: 12px; color: var(--accent-blue); font-weight: bold; text-align: center; }
+    table.sched tr.ev td { background: color-mix(in srgb, var(--accent-amber) 12%, transparent); }
+    table.sched tr.ev td.note { color: var(--accent-amber); font-family: inherit; font-weight: 600; text-align: left; }
+    table.sched tr.cur td { background: color-mix(in srgb, var(--accent-blue) 28%, transparent); color: var(--text-main); }
+    table.sched tr.cur td.mk { color: var(--accent-blue); }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 3px; vertical-align: -1px; }
+    .sched-foot { padding: 4px 8px; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 9.5px; }
+    .btn-left { position: absolute; left: 0; top: -2px; display: flex; gap: 6px; }
+    .btn-sm { padding: 3px 10px; text-align: center; border: 1px solid var(--border-color); }
+    @media (max-width: 1500px) {
+        .control-panel { flex-basis: 330px; }
+        .schedule { flex-basis: 330px; }
+        table.sched { font-size: 9.5px; }
+        table.sched td, table.sched th { padding: 2px 3px; }
+        .fill-cell .v { font-size: 12px; }
+    }
+    .credit { max-width: 1500px; margin: 6px auto 0; text-align: right; font-size: 8px; color: var(--credit); letter-spacing: 0.3px; }
+    @media (max-width: 980px) {
+        .dashboard { flex-direction: column; height: auto; }
+        .control-panel { flex: none; }
+        .canvas-wrap { min-height: 760px; }
+    }
+
+    .app-header { max-width: 1500px; margin: 0 auto 8px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+        padding: 6px 12px; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 6px; }
+    .app-header .app-title { font-size: 14px; font-weight: 700; color: var(--text-main); letter-spacing: 0.3px; }
+    .app-header .app-ver { font-family: monospace; font-size: 11px; font-weight: 700; color: var(--accent-blue);
+        border: 1px solid var(--accent-blue); border-radius: 3px; padding: 0 5px; }
+    .app-header .app-author { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+    .app-header .app-disc { flex-basis: 100%; font-size: 9.5px; color: var(--text-muted); line-height: 1.35;
+        border-top: 1px solid var(--border-color); padding-top: 4px; }
+    .app-header .app-disc b { color: var(--accent-amber); }
+
+    .unit-tog { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); margin-left: auto; }
+    .unit-tog .seg2 { display: inline-flex; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; }
+    .unit-tog button { border-radius: 0; padding: 2px 10px; text-align: center; font-size: 11px; }
+    .unit-tog button.on { background: var(--accent-blue); color: var(--on-accent); }
+    .app-header .app-author { margin-left: 14px !important; }
+</style>
+</head>
+<body>
+<header class="app-header">
+    <span class="app-title" id="appTitle">Coiled Tubing Cement Plug Simulator</span>
+    <span class="app-ver" id="appVer">V1.3 · 2026-10-29</span>
+    <span class="unit-tog" id="unitTog">Volume units <span class="seg2"><button type="button" data-u="bbl">bbl</button><button type="button" data-u="cf">ft³</button></span></span>
+    <span class="app-author">S. Siddhu | Central FEU</span>
+    <div class="app-disc"><b>DISCLAIMER:</b> <span id="appDisc">For training and review purposes only — not a job design tool. Results come from simplified models and user inputs; verify against the service company's job design and field data before operational or regulatory use.</span></div>
+</header>
+<div class="dashboard">
+    <div class="control-panel">
+        <h2>Well &amp; Plug</h2>
+        <div class="input-group">
+            <label for="csgCombo">Casing Preset (OD × nominal weight)</label>
+            <select id="csgCombo"></select>
+        </div>
+        <div class="grid-2col">
+            <div class="input-group"><label for="csgOD">Casing OD (in)</label><input type="number" id="csgOD" step="0.125"></div>
+            <div class="input-group"><label for="csgWt">Nominal Weight (lb/ft)</label><input type="number" id="csgWt" step="0.1"></div>
+            <div class="input-group"><label for="idOverride">Casing ID Override (in)</label><input type="number" id="idOverride" step="0.001" placeholder="blank = formula"></div>
+            <div class="input-group"><label>Casing ID Used</label><div class="val" id="lblCsgID" style="padding:4px 0;text-align:left">–</div></div>
+            <div class="input-group"><label for="plugBase">Plug Base / CIBP (ft)</label><input type="number" id="plugBase" step="10"></div>
+            <div class="input-group"><label for="targetTop">Target Plug Top (ft)</label><input type="number" id="targetTop" step="10"></div>
+            <div class="input-group"><label for="wellDensity">Well Fluid (ppg)</label><input type="number" id="wellDensity" step="0.1"></div>
+        </div>
+
+        <h2>Coiled Tubing</h2>
+        <div class="input-group">
+            <label for="ctCombo">CT Preset (OD × wall)</label>
+            <select id="ctCombo"></select>
+        </div>
+        <div class="grid-2col">
+            <div class="input-group"><label for="ctOD">CT OD (in)</label><input type="number" id="ctOD" step="0.125"></div>
+            <div class="input-group"><label for="ctWall">CT Wall (in)</label><input type="number" id="ctWall" step="0.001"></div>
+            <div class="input-group"><label for="ctLength">CT Length on Reel (ft)</label><input type="number" id="ctLength" step="100"></div>
+            <div class="input-group"><label for="lineVol">Surface Lines (<span class="vu">bbl</span>)</label><input type="number" id="lineVol" step="0.5"></div>
+            <div class="input-group"><label for="maxPress">Max Pump Pressure (psi)</label><input type="number" id="maxPress" step="250"></div>
+            <div class="input-group"><label>CT ID</label><div class="val" id="lblCtID" style="padding:4px 0;text-align:left">–</div></div>
+        </div>
+        <div class="input-group">
+            <label>End of CT</label>
+            <div class="seg" id="ctEndSeg">
+                <button type="button" data-v="open" class="on">Open-ended</button>
+                <button type="button" data-v="straight">Open + CT straightener</button>
+                <button type="button" data-v="nozzle">Jetting nozzle</button>
+            </div>
+        </div>
+        <div class="grid-2col" id="nozRow" style="display:none">
+            <div class="input-group"><label for="nozTFA">Nozzle TFA (in²)</label><input type="number" id="nozTFA" step="0.01"></div>
+            <div class="input-group"><label>Nozzle ΔP with cement</label><div class="val" id="lblNozDP" style="padding:4px 0;text-align:left">–</div></div>
+        </div>
+
+        <h2>Fluids</h2>
+        <div class="grid-2col">
+            <div class="input-group"><label for="spAVol">Spacer Ahead (<span class="vu">bbl</span>)</label><input type="number" id="spAVol" step="1"></div>
+            <div class="input-group"><label for="spADens">Spacer Ahead (ppg)</label><input type="number" id="spADens" step="0.1"></div>
+            <div class="input-group"><label for="cmtVol">Cement (<span class="vu">bbl</span>)</label><input type="number" id="cmtVol" step="0.5"></div>
+            <div class="input-group"><label for="cmtDens">Cement (ppg)</label><input type="number" id="cmtDens" step="0.1"></div>
+            <div class="input-group"><label for="cmtPV">Cement PV (cP)</label><input type="number" id="cmtPV" step="5"></div>
+            <div class="input-group"><label for="cmtYP">Cement YP (lb/100 ft²)</label><input type="number" id="cmtYP" step="1"></div>
+            <div class="input-group"><label for="spBVol">Spacer Behind (<span class="vu">bbl</span>)</label><input type="number" id="spBVol" step="0.5"></div>
+            <div class="input-group"><label for="spBDens">Spacer Behind (ppg)</label><input type="number" id="spBDens" step="0.1"></div>
+            <div class="input-group"><label for="dispDens">Displacement (ppg)</label><input type="number" id="dispDens" step="0.1"></div>
+        </div>
+
+        <h2>Operations</h2>
+        <div class="grid-2col">
+            <div class="input-group"><label for="pumpRate">Pump Rate (bpm)</label><input type="number" id="pumpRate" step="0.1"></div>
+            <div class="input-group"><label for="headFt">Cement Head Above CT End (ft)</label><input type="number" id="headFt" step="10"></div>
+            <div class="input-group"><label for="tripSpeed">RIH / POOH Speed (ft/min)</label><input type="number" id="tripSpeed" step="10"></div>
+            <div class="input-group"><label for="pullOutSpeed">Pull-out-of-Cement Speed (ft/min)</label><input type="number" id="pullOutSpeed" step="5"></div>
+            <div class="input-group"><label for="clearance">Pull Above Final TOC (ft)</label><input type="number" id="clearance" step="10"></div>
+        </div>
+        <div class="grid-2col train-box">
+            <div class="input-group"><label for="fastPull">Training: Pull Speed (ft/min)</label><input type="number" id="fastPull" step="5"></div>
+            <div class="input-group"><label for="mixRatio">Contamination (well fluid : cmt, by vol.)</label><input type="number" id="mixRatio" step="0.25"></div>
+        </div>
+        <div class="note">While laying the plug, CT is pulled at the matched speed (pump rate ÷ wellbore capacity) so the nozzle stays the set head below the cement top. Water-like fluids use PV 1 cP, YP 0 for CT friction.</div>
+
+        <h2>CT Tag &amp; Buckling Check</h2>
+        <div class="grid-2col">
+            <div class="input-group"><label for="tagLoad">Slack-off, CIBP / Prev. Plug (lb)</label><input type="number" id="tagLoad" step="250"></div>
+            <div class="input-group"><label for="tagLoad2">Slack-off, New Plug Top (lb)</label><input type="number" id="tagLoad2" step="250"></div>
+        </div>
+        <div class="grid-3col">
+            <div class="input-group"><label for="muLo">Friction — Low</label><input type="number" id="muLo" step="0.05"></div>
+            <div class="input-group"><label for="mu">Nominal</label><input type="number" id="mu" step="0.05"></div>
+            <div class="input-group"><label for="muHi">High</label><input type="number" id="muHi" step="0.05"></div>
+        </div>
+        <div class="grid-2col">
+            <div class="input-group"><label for="ctYield">CT Yield Strength (psi)</label><input type="number" id="ctYield" step="10000"></div>
+            <div class="input-group"><label for="designFactor">Design Limit (% of yield)</label><input type="number" id="designFactor" step="5"></div>
+        </div>
+        <div class="calc-box" id="bkBox">
+            <h3>Tag Check (pumps off, static)</h3>
+            <table class="bk">
+                <thead><tr><th></th><th>CIBP / Prev. Plug</th><th>New Plug Top</th></tr></thead>
+                <tbody id="bkBody"></tbody>
+            </table>
+            <canvas id="bkChart" style="position:static;width:100%;height:210px;margin-top:5px;border-radius:3px"></canvas>
+            <div class="note" id="bkNote" style="margin-top:3px">–</div>
+        </div>
+
+        <div class="calc-box">
+            <h3>Volumes</h3>
+            <div class="row"><span>Wellbore Capacity:</span><span id="lblCw" class="val">–</span></div>
+            <div class="row"><span>Annulus Around CT:</span><span id="lblCann" class="val">–</span></div>
+            <div class="row"><span>CT Internal (reel + lines):</span><span id="lblVpath" class="val">–</span></div>
+            <div class="row"><span>Cement to Build Head:</span><span id="lblV0" class="val amber">–</span></div>
+            <div class="row"><span>Displacement Behind Spacer:</span><span id="lblDisp" class="val">–</span></div>
+        </div>
+        <div class="calc-box green-variant">
+            <h3>Placement</h3>
+            <div class="row"><span>Matched CT Pull Speed:</span><span id="lblPull" class="val green">–</span></div>
+            <div class="row"><span>TOC at End of Pumping (CT in):</span><span id="lblTocIn" class="val">–</span></div>
+            <div class="row"><span>Final TOC (CT out):</span><span id="lblTocOut" class="val green">–</span></div>
+            <div class="row"><span>vs. Target Top:</span><span id="lblVsTarget" class="val">–</span></div>
+            <div class="row"><span>TOC Drop When CT Exits:</span><span id="lblDrop" class="val">–</span></div>
+        </div>
+        <div class="calc-box alert-variant">
+            <h3>Pressures</h3>
+            <div class="row"><span>Max Pump Pressure (job):</span><span id="lblMaxP" class="val">–</span></div>
+            <div class="row"><span>CT Friction, Water / Cement:</span><span id="lblFric" class="val">–</span></div>
+            <div class="row"><span>End of CT:</span><span id="lblEnd" class="val">–</span></div>
+            <div class="row"><span>Pressure on CIBP (final):</span><span id="lblPbase" class="val">–</span></div>
+            <div class="row"><span>Head ΔP (cement vs well fluid):</span><span id="lblHeadDP" class="val amber">–</span></div>
+        </div>
+
+        <h2>Operational Sequence</h2>
+        <div class="btn-grid">
+            <button id="step1" onclick="playPhase(1)">1. RIH Coil to Plug Base</button>
+            <button id="step2" onclick="playPhase(2)">2. Pump Spacer &amp; Cement — Build Head (CT stationary)</button>
+            <button id="step3" onclick="playPhase(3)">3. Lay Plug — Pull CT at Matched Speed</button>
+            <button id="step4" onclick="playPhase(4)">4. Pull Out of Cement (pumps off)</button>
+            <button id="step5" onclick="playPhase(5)">5. POOH</button>
+            <button id="btnFast" class="btn-train" onclick="toggleFast()" title="Training scenario: while pumping, switch CT pull speed to the training speed. If faster than pump rate ÷ wellbore capacity, the nozzle climbs out of the cement and the remaining cement is strung out in well fluid.">⚠ TRAINING: Pull Faster Than Fill Rate</button>
+        </div>
+        <div class="speed-row">
+            <label for="simSpeed">Animation speed</label>
+            <select id="simSpeed">
+                <option value="20">×20 (1 s = 20 s)</option>
+                <option value="60" selected>×60 (1 s = 1 min)</option>
+                <option value="180">×180 (1 s = 3 min)</option>
+                <option value="600">×600 (1 s = 10 min)</option>
+            </select>
+        </div>
+        <div class="btn-row">
+            <button class="btn-run" id="btnRun" onclick="runFullJob()">▶ RUN JOB</button>
+            <button class="btn-pause" id="btnPause" onclick="togglePause()">❚❚ PAUSE</button>
+            <button class="btn-reset" onclick="resetSim()">↺ RESET</button>
+        </div>
+    </div>
+
+    <div class="canvas-panel">
+        <div class="canvas-head">
+            <div class="btn-left">
+                <button class="btn-sm" id="btnSched" onclick="toggleSchedule()">☰ Hide schedule</button>
+                <button class="btn-sm" id="btnScale" onclick="toggleScaleBreak()" title="Scale break compresses the upper hole and expands the plug zone. Off = whole well at one true vertical scale.">⇕ Scale break: ON</button>
+            </div>
+            <h2>Coiled Tubing Cement Plug — Operational Schematic</h2>
+            <button class="btn-theme" id="btnTheme" onclick="toggleTheme()">☀ Light view</button>
+        </div>
+        <div class="fill-strip" title="Volume to nozzle = surface lines + full CT length on the reel (constant while CT moves). Matched pull speed = pump rate ÷ wellbore capacity. Required cement = (plug base − target top) × wellbore capacity.">
+            <div class="fill-cell"><span class="k">Volume to CT end</span><span class="v" id="fsVpath">–</span><span class="s" id="fsVpathS">–</span></div>
+            <div class="fill-cell"><span class="k">Cement to build head</span><span class="v" id="fsV0">–</span><span class="s" id="fsV0S">–</span></div>
+            <div class="fill-cell"><span class="k">Matched pull speed</span><span class="v hl" id="fsPull">–</span><span class="s" id="fsPullS">–</span></div>
+            <div class="fill-cell"><span class="k">Required to target</span><span class="v" id="fsReq">–</span><span class="s" id="fsReqS">–</span></div>
+            <div class="fill-cell"><span class="k">Excess over required</span><span class="v" id="fsExc">–</span><span class="s" id="fsExcS">–</span></div>
+            <div class="fill-cell"><span class="k">Final TOC (CT out)</span><span class="v" id="fsToc">–</span><span class="s" id="fsTocS">–</span></div>
+            <div class="fill-cell"><span class="k">Job time (est.)</span><span class="v" id="fsTime">–</span><span class="s" id="fsTimeS">–</span></div>
+        </div>
+        <div id="msgBox" class="msg-box"><ul id="msgList"></ul></div>
+        <div class="view-row">
+            <div class="canvas-wrap" id="canvasWrap"><canvas id="renderCanvas"></canvas></div>
+            <aside class="schedule" id="schedPanel">
+                <div class="sched-head">
+                    <b>PUMP SCHEDULE</b>
+                    <label for="schedInc">Increment (<span class="vu">bbl</span>) <input type="number" id="schedInc" value="1" step="0.5" min="0.1"></label>
+                </div>
+                <div class="sched-scroll" id="schedScroll">
+                    <table class="sched">
+                        <thead><tr><th></th><th class="vu">bbl</th><th>Min</th><th id="thPN">Pump → End</th><th>CT ft</th><th>ft/min</th><th>TOC</th><th>Head</th><th>psi</th></tr></thead>
+                        <tbody id="schedBody"></tbody>
+                    </table>
+                </div>
+                <div class="sched-foot" id="schedFoot">–</div>
+            </aside>
+        </div>
+    </div>
+</div>
+<div class="credit">S. Siddhu | Central FEU</div>
+
+<script>
+// ===== Header: edit version and disclaimer here =====
+const APP_VERSION = 'V1.3';
+const APP_DATE = '2026-10-29';
+const APP_DISCLAIMER = "For training and review purposes only — not a job design tool. Results come from simplified models and user inputs; verify against the service company's job design and field data before operational or regulatory use.";
+document.getElementById('appVer').textContent = APP_VERSION + ' · ' + APP_DATE;
+document.getElementById('appDisc').textContent = APP_DISCLAIMER;
+document.title = document.getElementById('appTitle').textContent + ' ' + APP_VERSION;
+
+// ===== Volume units (model works in bbl; display in bbl or ft³) =====
+const CF_PER_BBL = 5.614583;
+let VU = 'bbl';
+try { VU = localStorage.getItem('vol_unit') === 'cf' ? 'cf' : 'bbl'; } catch (e) {}
+const VUL = () => (VU === 'cf' ? 'ft³' : 'bbl');
+const VUC = () => (VU === 'cf' ? 'FT³' : 'BBL');
+const toV = b => (VU === 'cf' ? b * CF_PER_BBL : b);                 // bbl -> display unit
+const fromV = x => (VU === 'cf' ? x / CF_PER_BBL : x);               // display unit -> bbl
+const vn = (b, d = 1) => fmt(toV(b), VU === 'cf' && d < 1 ? 1 : d);    // number only, display unit
+const vd = (b, d = 1) => `${vn(b, d)} ${VUL()}`;                        // primary only
+const vb = (b, d = 1) => VU === 'cf'                                     // primary (secondary)
+    ? `${fmt(b * CF_PER_BBL, d)} ft³ (${fmt(b, d)} bbl)`
+    : `${fmt(b, d)} bbl (${fmt(b * CF_PER_BBL, d)} ft³)`;
+const vbH = (b, d = 1) => VU === 'cf'
+    ? `${fmt(b * CF_PER_BBL, d)} ft³ <small>(${fmt(b, d)} bbl)</small>`
+    : `${fmt(b, d)} bbl <small>(${fmt(b * CF_PER_BBL, d)} ft³)</small>`;
+const setHTML = (id, h) => { document.getElementById(id).innerHTML = h; };
+const capBbl = c => fmt(c, 5) + ' bbl' + '/ft', capCf = c => fmt(c * CF_PER_BBL, 4) + ' ft³/ft';
+const capP = c => (VU === 'cf' ? capCf(c) : capBbl(c));
+const capB = c => (VU === 'cf' ? `${capCf(c)} (${capBbl(c)})` : `${capBbl(c)} (${capCf(c)})`);
+function initUnitToggle(volFields, extraFields) {
+    const all = volFields.concat(extraFields || []);
+    const paint = () => {
+        document.querySelectorAll('.vu').forEach(e => e.textContent = VUL());
+        document.querySelectorAll('#unitTog button').forEach(b => b.classList.toggle('on', b.dataset.u === VU));
+    };
+    document.querySelectorAll('#unitTog button').forEach(b => b.addEventListener('click', () => {
+        const u = b.dataset.u;
+        if (u === VU) return;
+        all.forEach(id => {
+            const el = document.getElementById(id); const x = Number(el.value);
+            if (el.value.trim() !== '' && isFinite(x)) el.value = +(u === 'cf' ? x * CF_PER_BBL : x / CF_PER_BBL).toFixed(2);
+        });
+        VU = u;
+        try { localStorage.setItem('vol_unit', u); } catch (e) {}
+        paint(); recalc();
+    }));
+    if (VU === 'cf') all.forEach(id => { const el = document.getElementById(id); const x = Number(el.value); if (isFinite(x)) el.value = +(x * CF_PER_BBL).toFixed(2); });
+    paint();
+}
+
+
+// =====================================================================
+//  DATA
+// =====================================================================
+const CASING_SETS = [
+    ['4-1/2"',  4.500, [9.50, 10.50, 11.60, 13.50, 15.10]],
+    ['4-3/4"',  4.750, [20.00]],
+    ['5"',      5.000, [11.50, 13.00, 15.00, 18.00]],
+    ['5-1/2"',  5.500, [14.00, 15.50, 17.00, 20.00, 23.00]],
+    ['6-5/8"',  6.625, [20.00, 24.00, 28.00, 32.00]],
+    ['7"',      7.000, [17.00, 20.00, 23.00, 26.00, 29.00, 32.00, 35.00, 38.00]],
+    ['7-5/8"',  7.625, [24.00, 26.40, 29.70, 33.70, 39.00]],
+    ['8-5/8"',  8.625, [24.00, 28.00, 32.00, 36.00, 40.00, 44.00, 49.00]],
+    ['9-5/8"',  9.625, [32.30, 36.00, 40.00, 43.50, 47.00, 53.50]],
+    ['10-3/4"', 10.750, [32.75, 40.50, 45.50, 51.00, 55.50, 60.70, 65.70]],
+    ['11-3/4"', 11.750, [42.00, 47.00, 54.00, 60.00]],
+    ['13-3/8"', 13.375, [48.00, 54.50, 61.00, 68.00, 72.00]]
+];
+const CASINGS = [];
+CASING_SETS.forEach(([n, od, ws]) => ws.forEach(w => CASINGS.push({ group: n, label: `${n} @ ${w.toFixed(2)} lb/ft`, od, wt: w })));
+const idFromWeight = (od, wt) => Math.sqrt(od * od - wt / 2.667);
+
+// Common coiled tubing OD / wall combinations (ID = OD − 2 × wall)
+const CT_SETS = [
+    ['1-1/4"', 1.250, [0.087, 0.095, 0.109, 0.125]],
+    ['1-1/2"', 1.500, [0.095, 0.109, 0.125, 0.134]],
+    ['1-3/4"', 1.750, [0.109, 0.125, 0.134, 0.156]],
+    ['2"',     2.000, [0.125, 0.134, 0.156, 0.175]],
+    ['2-3/8"', 2.375, [0.156, 0.175, 0.190, 0.204]],
+    ['2-5/8"', 2.625, [0.175, 0.190, 0.204]],
+    ['2-7/8"', 2.875, [0.156, 0.175, 0.190, 0.204]]
+];
+const CTS = [];
+CT_SETS.forEach(([n, od, ws]) => ws.forEach(w => CTS.push({ group: n, label: `${n} × ${w.toFixed(3)}" wall`, od, wall: w })));
+
+// [id, label, default, rule]  rule: pos (>0), dens (0–30], nonneg (>=0)
+const FIELDS = [
+    ['csgOD', 'Casing OD', 7.000, 'pos'], ['csgWt', 'Casing weight', 26.00, 'pos'],
+    ['plugBase', 'Plug base', 5000, 'pos'], ['targetTop', 'Target plug top', 4500, 'nonneg'],
+    ['wellDensity', 'Well fluid density', 9.0, 'dens'],
+    ['ctOD', 'CT OD', 1.750, 'pos'], ['ctWall', 'CT wall', 0.134, 'pos'],
+    ['ctLength', 'CT length', 12000, 'pos'], ['nozTFA', 'Nozzle TFA', 0.15, 'pos'], ['lineVol', 'Surface line volume', 2.0, 'nonneg'],
+    ['maxPress', 'Max pump pressure', 5000, 'pos'],
+    ['spAVol', 'Spacer ahead volume', 5, 'nonneg'], ['spADens', 'Spacer ahead density', 8.33, 'dens'],
+    ['cmtVol', 'Cement volume', 22, 'pos'], ['cmtDens', 'Cement density', 15.8, 'dens'],
+    ['cmtPV', 'Cement PV', 60, 'nonneg'], ['cmtYP', 'Cement YP', 20, 'nonneg'],
+    ['spBVol', 'Spacer behind volume', 2, 'nonneg'], ['spBDens', 'Spacer behind density', 8.33, 'dens'],
+    ['dispDens', 'Displacement density', 8.6, 'dens'],
+    ['pumpRate', 'Pump rate', 1.5, 'pos'], ['headFt', 'Cement head', 100, 'pos'],
+    ['tripSpeed', 'RIH/POOH speed', 100, 'pos'], ['pullOutSpeed', 'Pull-out speed', 30, 'pos'],
+    ['clearance', 'Pull above TOC', 200, 'nonneg'],
+    ['fastPull', 'Training pull speed', 80, 'pos'], ['mixRatio', 'Contamination ratio', 1, 'nonneg'],
+    ['tagLoad', 'Slack-off (CIBP)', 3000, 'nonneg'], ['tagLoad2', 'Slack-off (new plug)', 3000, 'nonneg'],
+    ['muLo', 'Friction factor low', 0.15, 'nonneg'], ['mu', 'Friction factor nominal', 0.25, 'nonneg'], ['muHi', 'Friction factor high', 0.35, 'nonneg'],
+    ['ctYield', 'CT yield', 80000, 'pos'], ['designFactor', 'Design limit', 80, 'pos']
+];
+const GRAD = 0.052;
+
+// =====================================================================
+//  THEMES
+// =====================================================================
+const THEMES = {
+    dark: {
+        bg: '#0b1220', band1: '#121b2b', band2: '#0e1625', dim: '#64748b', steel: '#f8fafc', steelEdge: '#020617',
+        ctSteel: '#c084fc', muted2: '#94a3b8', hardware: '#475569', panel: '#111a2b', muted: '#b6c2d2', text: '#f1f5f9',
+        gaugeFace: '#0b1220', border: '#334663', gaugeTrack: '#1e2a3d', accent: '#38bdf8', red: '#f87171',
+        good: '#4ade80', warn: '#fbbf24', target: '#4ade80', leader: 'rgba(182,194,210,0.55)', connector: 'rgba(56,189,248,0.55)',
+        fluids: {
+            well:    { fill: '#5b4a3a', text: '#d6bfa3' },
+            spacerA: { fill: '#f59e0b', text: '#fcd34d' },
+            cement:  { fill: '#a5b4c6', text: '#dbe3ec' },
+            spacerB: { fill: '#eab308', text: '#fde047' },
+            disp:    { fill: '#0ea5e9', text: '#7dd3fc' },
+            strung:  { fill: '#a5b4c6', text: '#fca5a5' }
+        }
+    },
+    light: {
+        bg: '#ffffff', band1: '#f4f1ea', band2: '#ebe6db', dim: '#94a3b8', steel: '#475569', steelEdge: '#0f172a',
+        ctSteel: '#7e22ce', muted2: '#475569', hardware: '#1f2937', panel: '#f1f5f9', muted: '#334155', text: '#0f172a',
+        gaugeFace: '#ffffff', border: '#94a3b8', gaugeTrack: '#e2e8f0', accent: '#0369a1', red: '#dc2626',
+        good: '#15803d', warn: '#b45309', target: '#15803d', leader: 'rgba(51,65,85,0.55)', connector: 'rgba(3,105,161,0.6)',
+        fluids: {
+            well:    { fill: '#b89a78', text: '#6b4f2e' },
+            spacerA: { fill: '#f59e0b', text: '#a16207' },
+            cement:  { fill: '#8d99a8', text: '#334155' },
+            spacerB: { fill: '#facc15', text: '#a16207' },
+            disp:    { fill: '#38bdf8', text: '#0369a1' },
+            strung:  { fill: '#8d99a8', text: '#b91c1c' }
+        }
+    }
+};
+const FLUID_NAMES = { well: 'Well fluid', spacerA: 'Spacer ahead', cement: 'Cement', spacerB: 'Spacer behind', disp: 'Displacement', strung: 'Strung / contaminated cement' };
+let T, COL;
+function applyTheme(name) {
+    if (!THEMES[name]) name = 'dark';
+    T = THEMES[name]; COL = {};
+    for (const k in T.fluids) COL[k] = { ...T.fluids[k], name: FLUID_NAMES[k] };
+    document.documentElement.setAttribute('data-theme', name);
+    const b = document.getElementById('btnTheme');
+    if (b) b.textContent = name === 'dark' ? '☀ Light view' : '☾ Dark view';
+    try { localStorage.setItem('ctp_theme', name); } catch (e) {}
+}
+function toggleTheme() { applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); if (typeof buildSchedule === 'function' && J) { buildSchedule(); drawBuckleChart(); } }
+{ let s = 'dark'; try { s = localStorage.getItem('ctp_theme') || 'dark'; } catch (e) {} applyTheme(s); }
+
+// =====================================================================
+//  FORM SETUP
+// =====================================================================
+const canvas = document.getElementById('renderCanvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+let W = 0, H = 0, J = null;
+const sim = { t: 0, playing: false, stopAt: Infinity, phaseMode: 0, last: null, fast: null };
+
+function fillSelect(sel, list, fmtLabel, isDefault) {
+    let grp = null;
+    list.forEach((c, i) => {
+        if (!grp || grp.label !== c.group) { grp = document.createElement('optgroup'); grp.label = c.group; sel.appendChild(grp); }
+        const o = document.createElement('option'); o.value = i; o.textContent = fmtLabel(c);
+        if (isDefault(c)) o.selected = true;
+        grp.appendChild(o);
+    });
+    const oc = document.createElement('option'); oc.value = -1; oc.textContent = 'Custom'; sel.appendChild(oc);
+}
+const csgSel = document.getElementById('csgCombo'), ctSel = document.getElementById('ctCombo');
+fillSelect(csgSel, CASINGS, c => `${c.label}  (ID ${idFromWeight(c.od, c.wt).toFixed(3)}")`, c => c.od === 7 && c.wt === 26);
+fillSelect(ctSel, CTS, c => `${c.label}  (ID ${(c.od - 2 * c.wall).toFixed(3)}")`, c => c.od === 1.75 && c.wall === 0.134);
+
+FIELDS.forEach(([id, , def]) => { const el = document.getElementById(id); el.value = def; el.addEventListener('input', recalc); });
+const VOL_FIELDS = ['lineVol', 'spAVol', 'cmtVol', 'spBVol'];
+initUnitToggle(VOL_FIELDS, ['schedInc']);
+document.getElementById('idOverride').addEventListener('input', recalc);
+csgSel.addEventListener('change', () => { const i = +csgSel.value; if (i >= 0) { setVal('csgOD', CASINGS[i].od); setVal('csgWt', CASINGS[i].wt.toFixed(2)); } recalc(); });
+ctSel.addEventListener('change', () => { const i = +ctSel.value; if (i >= 0) { setVal('ctOD', CTS[i].od); setVal('ctWall', CTS[i].wall.toFixed(3)); } recalc(); });
+['csgOD', 'csgWt'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+    const od = +getVal('csgOD'), wt = +getVal('csgWt');
+    csgSel.value = CASINGS.findIndex(c => Math.abs(c.od - od) < 1e-6 && Math.abs(c.wt - wt) < 1e-6);
+}));
+['ctOD', 'ctWall'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+    const od = +getVal('ctOD'), w = +getVal('ctWall');
+    ctSel.value = CTS.findIndex(c => Math.abs(c.od - od) < 1e-6 && Math.abs(c.wall - w) < 1e-6);
+}));
+let ctEnd = 'open';
+try { ctEnd = localStorage.getItem('ctp_end') || 'open'; } catch (e) {}
+function setCtEnd(val) {
+    ctEnd = val;
+    try { localStorage.setItem('ctp_end', val); } catch (e) {}
+    document.querySelectorAll('#ctEndSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === val));
+    document.getElementById('nozRow').style.display = val === 'nozzle' ? 'grid' : 'none';
+}
+document.querySelectorAll('#ctEndSeg button').forEach(b => b.addEventListener('click', () => { setCtEnd(b.dataset.v); recalc(); }));
+const endWord = (cap) => (ctEnd === 'nozzle' ? (cap ? 'NOZZLE' : 'nozzle') : (cap ? 'CT END' : 'CT end'));
+// Jet nozzle pressure drop (bit-nozzle equation): ΔP = ρ Q² / (12,032 Cd² A²), ρ ppg, Q gpm, A in², Cd 0.95
+function nozzleDP(rho, qBpm, tfa) {
+    if (ctEnd !== 'nozzle' || !(tfa > 0) || qBpm <= 0) return 0;
+    const Q = qBpm * 42;
+    return rho * Q * Q / (12032 * 0.95 * 0.95 * tfa * tfa);
+}
+function setVal(id, v) { document.getElementById(id).value = v; }
+function getVal(id) { return document.getElementById(id).value; }
+
+// =====================================================================
+//  MODEL
+// =====================================================================
+function readInputs() {
+    const v = {}, errors = [];
+    FIELDS.forEach(([id, label, , rule]) => {
+        const el = document.getElementById(id);
+        const raw = el.value.trim(); const n = raw === '' ? NaN : Number(raw);
+        let bad = false;
+        if (!isFinite(n)) { errors.push(`${label} is blank or not a number.`); bad = true; }
+        else if (rule === 'pos' && n <= 0) { errors.push(`${label} must be greater than 0.`); bad = true; }
+        else if (rule === 'dens' && (n <= 0 || n > 30)) { errors.push(`${label} must be between 0 and 30 ppg.`); bad = true; }
+        else if (rule === 'nonneg' && n < 0) { errors.push(`${label} cannot be negative.`); bad = true; }
+        el.classList.toggle('bad', bad); v[id] = VOL_FIELDS.includes(id) && isFinite(n) ? fromV(n) : n;
+    });
+    const ov = getVal('idOverride').trim();
+    v.idOverride = ov === '' ? null : Number(ov);
+    document.getElementById('idOverride').classList.remove('bad');
+    if (!errors.length) {
+        const rad = v.csgOD * v.csgOD - v.csgWt / 2.667;
+        if (rad <= 0) { errors.push('Casing weight too heavy for the OD (formula gives no ID).'); mark('csgWt'); }
+        else {
+            v.csgIDf = Math.sqrt(rad); v.csgID = v.csgIDf;
+            if (v.idOverride !== null) {
+                if (!isFinite(v.idOverride) || v.idOverride <= 0 || v.idOverride >= v.csgOD) { errors.push('Casing ID override must be > 0 and < casing OD.'); mark('idOverride'); }
+                else v.csgID = v.idOverride;
+            }
+        }
+        v.ctID = v.ctOD - 2 * v.ctWall;
+        if (v.ctID <= 0) { errors.push('CT wall is too thick for the OD.'); mark('ctWall'); }
+        if (v.csgID && v.ctOD >= v.csgID) { errors.push(`CT OD ${v.ctOD}" does not fit inside casing ID ${v.csgID.toFixed(3)}".`); mark('ctOD'); }
+        if (v.targetTop >= v.plugBase) { errors.push('Target plug top must be shallower than the plug base.'); mark('targetTop'); }
+        if (!(v.muLo <= v.mu && v.mu <= v.muHi)) { errors.push('Friction factors must satisfy low ≤ nominal ≤ high.'); ['muLo', 'mu', 'muHi'].forEach(mark); }
+        if (v.ctLength < v.plugBase) { errors.push(`CT length (${fmt(v.ctLength)} ft) is shorter than plug base depth.`); mark('ctLength'); }
+    }
+    return { v, errors };
+}
+function mark(id) { document.getElementById(id).classList.add('bad'); }
+
+function waterGrad(rho, q, d) { return pipeGrad(rho, 1, 0, q, d); }
+// Bingham plastic pipe-flow friction gradient, psi/ft.  q bpm, d in, PV cP, YP lb/100ft².
+function pipeGrad(rho, pv, yp, q, d) {
+    if (q <= 0) return 0;
+    const v = 0.4085 * q * 42 / (d * d);                    // ft/s
+    const lam = pv * v / (1500 * d * d) + yp / (225 * d);
+    const re = 928 * rho * v * d / Math.max(pv, 0.5);
+    const tur = re > 2100 ? (0.0791 / Math.pow(re, 0.25)) * rho * v * v / (25.8 * d) : 0;
+    return Math.max(lam, tur);
+}
+
+// CT buckling during a static tag (pumps off) in a vertical cased well.
+//   Critical loads, vertical well (Wu & Juvkam-Wold): Fsin = 2.55 (EI w²)^(1/3), Fhel = 5.55 (EI w²)^(1/3)
+//   Helical contact force (Lubinski/Mitchell): wn = r F² / (4 EI)
+//   Load transfer down a helically buckled vertical string with friction (He & Kyllingstad):
+//       dF/dz = w − μ r F² / (4 EI)  →  F = FL · tanh(ΔW / FL),  FL = √(4 EI w / (μ r))
+//   ΔW = surface slack-off = w × compressed length.  Bending stress in helix: σb = D r F / (4 I).
+function buckling(v, Zb, slack, mu) {
+    const od = v.ctOD, id = v.ctID;
+    const As = Math.PI / 4 * (od * od - id * id), Ai = Math.PI / 4 * id * id, Ao = Math.PI / 4 * od * od;
+    const ws = As * 490 / 144;                                         // steel lb/ft
+    const we = ws + 12 / 231 * (v.dispDens * Ai - v.wellDensity * Ao); // buoyed lb/ft (CT full of displacement)
+    const I = Math.PI / 64 * (Math.pow(od, 4) - Math.pow(id, 4));
+    const EI = 30e6 * I;                                               // lb·in²
+    const r = (v.csgID - od) / 2;                                      // radial clearance, in
+    const w = we / 12;                                                 // lb/in
+    const k = Math.cbrt(EI * w * w);
+    const Fsin = 2.55 * k, Fhel = 5.55 * k;
+    const FL = mu > 0 ? Math.sqrt(4 * EI * w / (mu * r)) : Infinity;
+    const avail = we * Zb;
+    const xfer = dW => (isFinite(FL) ? FL * Math.tanh(dW / FL) : dW);
+    const dW = Math.min(slack, avail);
+    const Fb = xfer(dW);
+    const zc = dW / we;
+    const sPerLb = 1 / As + od * r / (4 * I);                          // psi per lb of compression (helical)
+    const sigma = Fb > Fsin ? Fb * sPerLb : Fb / As;
+    const limit = v.ctYield * v.designFactor / 100;
+    const Fy = limit / sPerLb;
+    const dWy = Fy < FL ? (isFinite(FL) ? FL * Math.atanh(Fy / FL) : Fy) : Infinity;
+    const pitch = Fb > Fhel ? Math.PI * Math.sqrt(8 * EI / Fb) / 12 : null;
+    return { Z: Zb, slack, mu, As, ws, we, I, EI, r, Fsin, Fhel, FL, avail, dW, Fb, zc, neutral: Zb - zc, sigma, limit, Fy, dWy, pitch, xfer,
+             overAvail: slack > avail, overStress: sigma > limit };
+}
+
+function buildJob(v) {
+    const Cw = v.csgID * v.csgID / 1029.4;
+    const Cct = v.ctID * v.ctID / 1029.4;
+    const Cod = v.ctOD * v.ctOD / 1029.4;
+    const Cann = Cw - Cod;
+    const L = v.ctLength;
+    const Vlines = v.lineVol;
+    const Vpath = Vlines + L * Cct;
+    const S1 = v.spAVol, C = v.cmtVol, S2 = v.spBVol;
+    const q = v.pumpRate, Hd = v.headFt, Zb = v.plugBase;
+    const fluids = [
+        { k: 'disp',    rho: v.dispDens, pv: 1, yp: 0, u0: -1e12, u1: 0 },
+        { k: 'spacerA', rho: v.spADens,  pv: 1, yp: 0, u0: 0, u1: S1 },
+        { k: 'cement',  rho: v.cmtDens,  pv: v.cmtPV, yp: v.cmtYP, u0: S1, u1: S1 + C },
+        { k: 'spacerB', rho: v.spBDens,  pv: 1, yp: 0, u0: S1 + C, u1: S1 + C + S2 },
+        { k: 'disp',    rho: v.dispDens, pv: 1, yp: 0, u0: S1 + C + S2, u1: 1e12 }
+    ];
+    const V0 = Hd * Cann;                         // cement to build the head with nozzle at plug base
+    const headReached = C >= V0;
+    const Vend = Vpath + S1 + C;                  // pumps stop when last cement leaves nozzle
+    const V2end = Math.min(Vpath + S1 + V0, Vend);
+    const ZnEnd = headReached ? Zb + Hd - (C + Hd * Cod) / Cw : Zb;
+    const TocIn = headReached ? ZnEnd - Hd : Zb - C / Cann;   // TOC with CT still in at end of pumping
+    const TocOut = Zb - C / Cw;                   // after CT pulled clear
+    const pullTarget = Math.max(0, TocOut - v.clearance);
+    const pullMatch = q / Cw;                     // ft/min
+
+    const t1 = Zb / v.tripSpeed;
+    const t2 = t1 + V2end / q;
+    const t3 = t2 + (Vend - V2end) / q;
+    const Jn = { v, Cw, Cct, Cod, Cann, L, Vlines, Vpath, S1, C, S2, q, Hd, Zb, fluids, V0, headReached, Vend, V2end,
+                 ZnEnd, TocIn, TocOut, pullTarget, pullMatch, dispBehind: Math.max(0, Vpath - S2) };
+    Jn.EcAt = t => Math.min(C, Math.max(0, q * (t - t1) - Vpath - S1));
+    Jn.znMatched = t => {
+        if (t < t2) return Zb;
+        return Math.min(Zb, Zb + Hd - (Jn.EcAt(t) + Hd * Cod) / Cw);
+    };
+    Jn.zn = Jn.znMatched;
+    Jn.fast = null; Jn.tLost = null; Jn.EcClean = C; Jn.Es = 0; Jn.mix = v.mixRatio;
+    Jn.contamTop = TocOut;
+    // ---- training scenario: CT pulled at a set speed from time tf while pumping ----
+    if (sim.fast && sim.fast.tf >= t1 && sim.fast.tf < t3) {
+        const tf = sim.fast.tf, vf = v.fastPull, z0 = Jn.znMatched(tf);
+        Jn.fast = { tf, vf, z0, V: q * (tf - t1) };
+        Jn.zn = t => (t < tf ? Jn.znMatched(t) : Math.max(0, z0 - vf * (t - tf)));
+        const g = t => Jn.zn(t) - topOf(Jn, Zb, Jn.EcAt(t), Jn.zn(t));   // head above nozzle
+        const tcx = t1 + (Vpath + S1) / q;                                 // first cement out of nozzle
+        const ts = Math.max(tf, tcx);
+        let tl = null;
+        if (ts < t3) {
+            if (g(ts) <= 1e-6) tl = ts;
+            else if (g(t3) <= 1e-6) {
+                let lo = ts, hi = t3;
+                for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (g(m) > 1e-6) lo = m; else hi = m; }
+                tl = hi;
+            }
+        }
+        if (tl !== null) {
+            Jn.tLost = tl;
+            Jn.EcClean = Jn.EcAt(tl);
+            Jn.Es = C - Jn.EcClean;
+            Jn.lostDepth = Jn.zn(tl);
+            Jn.lostV = q * (tl - t1);
+        }
+        Jn.ZnEnd = Jn.zn(t3);
+        Jn.TocOut = Zb - Jn.EcClean / Cw;                                   // competent cement only
+        Jn.contamTop = Math.max(0, Jn.TocOut - Jn.Es * (1 + v.mixRatio) / Cw);
+        Jn.TocIn = topOf(Jn, Zb, Jn.EcClean, Jn.ZnEnd);
+        Jn.pullTarget = Math.max(0, Jn.contamTop - v.clearance);
+    }
+    const t4 = t3 + Math.max(0, Jn.ZnEnd - Jn.pullTarget) / v.pullOutSpeed;
+    const t5 = t4 + Jn.pullTarget / v.tripSpeed;
+    Jn.phases = [0, t1, t2, t3, t4, t5]; Jn.tEnd = t5;
+    Jn.reqCement = (Zb - v.targetTop) * Cw;
+    const tagSet = (Z, slack) => {
+        const t = { nom: buckling(v, Z, slack, v.mu), lo: buckling(v, Z, slack, v.muLo), hi: buckling(v, Z, slack, v.muHi) };
+        const atw = t.nom.avail;   // slack off all tubing weight
+        t.atw = { nom: buckling(v, Z, atw, v.mu), lo: buckling(v, Z, atw, v.muLo), hi: buckling(v, Z, atw, v.muHi) };
+        return t;
+    };
+    Jn.tagA = tagSet(Zb, v.tagLoad);          // CIBP / previous plug
+    Jn.tagB = tagSet(Jn.TocOut, v.tagLoad2);  // top of the (competent) plug just placed
+    Jn.bk = Jn.tagA.nom;
+    Jn.headDP = GRAD * (v.cmtDens - v.wellDensity) * Hd;
+    Jn.fricWater = waterGrad(v.dispDens, q, v.ctID) * L;
+    Jn.fricCement = pipeGrad(v.cmtDens, v.cmtPV, v.cmtYP, q, v.ctID) * L;
+
+    // sweep the pumping window for peak pressure and free-fall
+    let maxP = 0, minMargin = Infinity, minAt = 0;
+    for (let i = 0; i <= 500; i++) {
+        const t = t1 + (t3 - t1) * i / 500;
+        const st = stateAt(Jn, t);
+        maxP = Math.max(maxP, st.pump);
+        if (st.margin < minMargin) { minMargin = st.margin; minAt = st.V; }
+    }
+    Jn.maxP = maxP; Jn.minMargin = minMargin; Jn.minAtV = minAt;
+    const fin = stateAt(Jn, t5 + 1);
+    Jn.Pbase = fin.Pbase;
+    Jn.gaugePmax = niceCeil(Math.max(maxP, 500) * 1.15);
+    return Jn;
+}
+
+// Depth of the top of `vol` bbl stacked upward from depth `bot`, with CT occupying 0..Zn.
+function topOf(Jx, bot, vol, Zn) {
+    if (vol <= 0) return bot;
+    let b = bot;
+    if (b > Zn) {
+        const seg = (b - Zn) * Jx.Cw;
+        if (vol <= seg) return b - vol / Jx.Cw;
+        vol -= seg; b = Zn;
+    }
+    return Math.max(0, b - vol / Jx.Cann);
+}
+
+function stateAt(Jx, t) {
+    const [ , t1, t2, t3, t4, t5] = Jx.phases;
+    const st = { t, V: 0, Zn: 0, pumping: false, speed: 0, phase: 0 };
+    if (t <= 0) { st.phase = 0; }
+    else if (t < t1) { st.phase = 1; st.Zn = Jx.v.tripSpeed * t; st.speed = Jx.v.tripSpeed; }
+    else if (t < t3) {
+        st.phase = t < t2 ? 2 : 3; st.V = Jx.q * (t - t1); st.pumping = true;
+        st.Zn = Jx.zn(t);
+        st.speed = t < t2 ? 0 : -Jx.pullMatch;
+        if (Jx.fast && t >= Jx.fast.tf) { st.training = true; st.speed = st.Zn > 0 ? -Jx.fast.vf : 0; }
+    }
+    else if (t < t4) { st.phase = 4; st.V = Jx.Vend; st.Zn = Jx.ZnEnd - Jx.v.pullOutSpeed * (t - t3); st.speed = -Jx.v.pullOutSpeed; }
+    else if (t < t5) { st.phase = 5; st.V = Jx.Vend; st.Zn = Math.max(0, Jx.pullTarget - Jx.v.tripSpeed * (t - t4)); st.speed = -Jx.v.tripSpeed; }
+    else { st.phase = 6; st.V = Jx.Vend; st.Zn = 0; }
+
+    // ---- fluids inside the CT (pipe coordinate x: 0 at reel inlet, L at nozzle) ----
+    st.pipe = [];        // {f, x0, x1}
+    st.lines = [];       // {f, s0, s1} within surface lines
+    for (const f of Jx.fluids) {
+        const s1 = st.V - f.u1, s2 = st.V - f.u0;
+        const a = Math.max(0, s1), b = Math.min(s2, Jx.Vpath);
+        if (b - a <= 1e-6) continue;
+        const la = a, lb = Math.min(b, Jx.Vlines);
+        if (lb > la) st.lines.push({ f, s0: la, s1: lb });
+        const pa = Math.max(a, Jx.Vlines);
+        if (b - pa > 1e-6) st.pipe.push({ f, x0: (pa - Jx.Vlines) / Jx.Cct, x1: (b - Jx.Vlines) / Jx.Cct });
+    }
+    // ---- fluids that have left the nozzle ----
+    const ex = k => { const f = Jx.fluids.find(g => g.k === k); return Math.min(Math.max(0, st.V - Jx.Vpath - f.u0), f.u1 - f.u0); };
+    st.E1 = ex('spacerA'); st.Ec = ex('cement');
+    st.EcClean = Jx.tLost !== null ? Math.min(st.Ec, Jx.EcClean) : st.Ec;
+    st.Es = st.Ec - st.EcClean;
+    st.lost = Jx.tLost !== null && t >= Jx.tLost;
+    st.TOC = topOf(Jx, Jx.Zb, st.EcClean, st.Zn);
+    st.CTOP = topOf(Jx, st.TOC, st.Es * (1 + Jx.mix), st.Zn);   // top of strung / contaminated zone
+    st.SPT = topOf(Jx, st.CTOP, st.E1, st.Zn);
+    st.layers = [
+        { k: 'cement', top: st.TOC, bot: Jx.Zb, rho: Jx.v.cmtDens },
+        { k: 'strung', top: st.CTOP, bot: st.TOC, rho: (Jx.v.cmtDens + Jx.mix * Jx.v.wellDensity) / (1 + Jx.mix) },
+        { k: 'spacerA', top: st.SPT, bot: st.CTOP, rho: Jx.v.spADens },
+        { k: 'well', top: 0, bot: st.SPT, rho: Jx.v.wellDensity }
+    ];
+    st.headSigned = st.Ec > 0 ? st.Zn - st.TOC : 0;
+    st.head = Math.max(0, st.headSigned);
+
+    // ---- pressures at the nozzle ----
+    let pann = 0;
+    for (const l of st.layers) pann += GRAD * l.rho * Math.max(0, Math.min(l.bot, st.Zn) - Math.max(l.top, 0));
+    let pct = 0, fric = 0;
+    const off = Jx.L - st.Zn;   // pipe x where CT enters the well
+    for (const s of st.pipe) {
+        const da = Math.max(s.x0, off) - off, db = s.x1 - off;
+        if (db > da) pct += GRAD * s.f.rho * (db - da);
+        if (st.pumping) fric += pipeGrad(s.f.rho, s.f.pv, s.f.yp, Jx.q, Jx.v.ctID) * (s.x1 - s.x0);
+    }
+    st.pann = pann; st.pct = pct; st.fric = fric;
+    st.nozDP = 0;
+    if (st.pumping) {
+        const u = st.V - Jx.Vpath;                    // fluid exiting the CT end now
+        const f = u < 0 ? Jx.fluids[0] : (Jx.fluids.find(g => g.u0 <= u && u < g.u1) || Jx.fluids[4]);
+        st.nozDP = nozzleDP(f.rho, Jx.q, Jx.v.nozTFA);
+    }
+    fric += st.nozDP;
+    st.margin = pann - pct + fric;
+    st.pump = st.pumping ? Math.max(0, st.margin) : 0;
+    st.freeFall = st.pumping && st.margin < 0;
+    let pb = 0;
+    for (const l of st.layers) pb += GRAD * l.rho * Math.max(0, l.bot - l.top);
+    st.Pbase = pb;
+    return st;
+}
+
+// =====================================================================
+//  PANEL OUTPUT
+// =====================================================================
+const fmt = (n, d = 0) => isFinite(n) ? (Math.abs(n) < 0.5 * Math.pow(10, -d) ? 0 : n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '–';
+const setTxt = (id, t) => { document.getElementById(id).textContent = t; };
+const fmtTime = m => { const h = Math.floor(m / 60), mm = Math.round(m - h * 60); return h ? `${h} h ${String(mm).padStart(2, '0')} min` : `${mm} min`; };
+
+function recalc() {
+    const { v, errors } = readInputs();
+    const msgs = errors.map(m => ({ t: 'err', m }));
+    if (errors.length) {
+        J = null; showMessages(msgs); setButtons(false); buildSchedule();
+        document.querySelectorAll('.val[id^=lbl], .fill-cell .v, .fill-cell .s').forEach(e => e.textContent = '–');
+        return;
+    }
+    J = buildJob(v); setButtons(true);
+    if (sim.t > J.tEnd) sim.t = J.tEnd;
+
+    setTxt('lblCsgID', fmt(v.csgID, 4) + '"' + (v.idOverride !== null ? ' (override)' : ' (formula)'));
+    setTxt('lblCtID', fmt(v.ctID, 3) + '"');
+    setTxt('lblCw', capB(J.Cw));
+    setTxt('lblCann', capB(J.Cann));
+    setTxt('lblVpath', vb(J.Vpath, 1));
+    setTxt('lblV0', vb(J.V0, 2));
+    setTxt('lblDisp', vb(J.dispBehind, 1));
+    setTxt('lblPull', fmt(J.pullMatch, 1) + ' ft/min');
+    setTxt('lblTocIn', fmt(J.TocIn) + ' ft');
+    setTxt('lblTocOut', J.Es > 0 ? `${fmt(J.TocOut)} ft competent` : fmt(J.TocOut) + ' ft');
+    const dT = v.targetTop - J.TocOut;
+    const e = document.getElementById('lblVsTarget');
+    e.textContent = Math.abs(dT) < 0.5 ? 'on target' : (dT > 0 ? `${fmt(dT)} ft above target` : `${fmt(-dT)} ft short of target`);
+    e.className = 'val ' + (dT >= -0.5 ? 'green' : 'red');
+    setTxt('lblDrop', fmt(J.TocOut - J.TocIn) + ' ft');
+    const mp = document.getElementById('lblMaxP');
+    mp.textContent = fmt(J.maxP) + ' psi'; mp.className = 'val ' + (J.maxP > v.maxPress ? 'red' : '');
+    setTxt('lblFric', `${fmt(J.fricWater)} / ${fmt(J.fricCement)} psi`);
+    setTxt('lblEnd', ctEnd === 'nozzle' ? `Jet nozzle, ${fmt(nozzleDP(v.cmtDens, v.pumpRate, v.nozTFA))} psi ΔP (cmt)` : ctEnd === 'straight' ? 'Open-ended + straightener' : 'Open-ended');
+    setTxt('lblNozDP', fmt(nozzleDP(v.cmtDens, v.pumpRate, v.nozTFA)) + ' psi @ ' + fmt(v.pumpRate, 2) + ' bpm');
+    setTxt('lblPbase', fmt(J.Pbase) + ' psi');
+    setTxt('lblHeadDP', fmt(J.headDP) + ' psi');
+
+    // fill strip
+    setHTML('fsVpath', vbH(J.Vpath, 1));
+    setTxt('fsVpathS', `${fmt(J.L)} ft CT + ${vd(J.Vlines, 1)} lines`);
+    setHTML('fsV0', vbH(J.V0, 2));
+    setTxt('fsV0S', `${fmt(J.Hd)} ft × ${capP(J.Cann)}`);
+    setTxt('fsPull', fmt(J.pullMatch, 1) + ' ft/min');
+    setTxt('fsPullS', VU === 'cf' ? `${fmt(J.q * CF_PER_BBL, 2)} ft³/min ÷ ${capP(J.Cw)}` : `${fmt(J.q, 2)} bpm ÷ ${capP(J.Cw)}`);
+    setHTML('fsReq', vbH(J.reqCement, 1));
+    setTxt('fsReqS', `${fmt(J.Zb - v.targetTop)} ft plug × ${capP(J.Cw)}`);
+    const exc = (J.C / J.reqCement - 1) * 100;
+    const ex = document.getElementById('fsExc');
+    ex.textContent = (exc >= 0 ? '+' : '') + fmt(exc, 1) + ' %'; ex.className = 'v ' + (exc >= 0 ? 'pos' : 'neg');
+    setTxt('fsExcS', exc >= 0 ? `${vd(J.C - J.reqCement, 1)} over` : `${vd(J.reqCement - J.C, 1)} short`);
+    setTxt('fsToc', fmt(J.TocOut) + ' ft');
+    if (J.Es > 0) setTxt('fsTocS', `competent · strung ${vd(J.Es, 1)} to ${fmt(J.contamTop)} ft`);
+    setTxt('fsTocS', `${fmt(J.Zb - J.TocOut)} ft plug · target ${fmt(v.targetTop)}`);
+    setTxt('fsTime', fmtTime(J.tEnd));
+    setTxt('fsTimeS', `Pumping ${fmtTime(J.phases[3] - J.phases[1])}`);
+
+    // tag / buckling table
+    {
+        const A = J.tagA, Bt = J.tagB;
+        const rng = t => `${fmt(t.hi.Fb)}–${fmt(t.lo.Fb)}`;
+        const pct = t => t.nom.dW > 0 ? t.nom.Fb / t.nom.dW : 1;
+        const status = t => t.nom.overStress || t.hi.overStress || t.lo.overStress ? ['OVER STRESS', 'red']
+            : t.nom.overAvail ? ['SLACK > ATW', 'red'] : pct(t) < 0.9 ? ['Friction-ltd', 'amber'] : ['OK', 'green'];
+        const rows = [
+            ['Tag depth', t => fmt(t.nom.Z) + ' ft'],
+            ['All tubing wt (ATW)', t => fmt(t.nom.avail) + ' lb', t => t.nom.overAvail ? 'red' : ''],
+            ['HDR', 'Slack-off as entered'],
+            ['Slack-off', t => fmt(t.nom.slack) + ' lb'],
+            ['On plug, μ nom', t => `${fmt(t.nom.Fb)} lb`, t => pct(t) < 0.9 ? 'amber' : 'green'],
+            ['  range μ hi→lo', t => rng(t) + ' lb', null, 'sub'],
+            ['  % reaching plug', t => `${fmt(pct(t) * 100)}%`, null, 'sub'],
+            ['Lockup, μ nom', t => isFinite(t.nom.FL) ? fmt(t.nom.FL) + ' lb' : '—', () => 'amber'],
+            ['  range μ hi→lo', t => `${fmt(t.hi.FL)}–${isFinite(t.lo.FL) ? fmt(t.lo.FL) : '∞'} lb`, null, 'sub'],
+            ['Buckled / NP, ft', t => t.nom.dW > 0 ? `${fmt(t.nom.zc)} / ${fmt(t.nom.neutral)}` : '—'],
+            ['Max stress', t => `${fmt(t.lo.sigma / v.ctYield * 100)}% Ys`, t => t.lo.overStress ? 'red' : 'green'],
+            ['Status', t => status(t)[0], t => status(t)[1]],
+            ['HDR', 'If all tubing weight is slacked off'],
+            ['On plug, μ nom', t => `${fmt(t.atw.nom.Fb)} lb`, () => 'amber'],
+            ['  range μ hi→lo', t => `${fmt(t.atw.hi.Fb)}–${fmt(t.atw.lo.Fb)} lb`, null, 'sub'],
+            ['  % reaching plug', t => `${fmt(t.atw.nom.Fb / t.atw.nom.dW * 100)}%`, null, 'sub'],
+            ['Max stress', t => `${fmt(t.atw.lo.sigma / v.ctYield * 100)}% Ys`, t => t.atw.lo.overStress ? 'red' : 'green']
+        ];
+        document.getElementById('bkBody').innerHTML = rows.map(([lab, f, cls, rcls]) => lab === 'HDR'
+            ? `<tr class="hdr"><td colspan="3">${f}</td></tr>` :
+            `<tr class="${rcls || ''}"><td>${lab.replace(/^  /, '&nbsp;&nbsp;')}</td>` +
+            [A, Bt].map(t => `<td class="${cls ? cls(t) : ''}">${f(t)}</td>`).join('') + '</tr>').join('');
+        const N = A.nom;
+        document.getElementById('bkNote').textContent =
+            `CT buoyed weight ${fmt(N.we, 2)} lb/ft · ${fmt(v.ctOD, 3)}" CT in ${fmt(v.csgID, 3)}" ID (radial clearance ${fmt(N.r, 2)}") · ` +
+            `helical buckling from ${fmt(N.Fhel)} lb · stress limit reached at ${fmt(N.Fy)} lb on plug. ` +
+            `Force on plug does not depend on depth; depth only sets the ATW available to slack off. Buckled length in ft. Max stress at low μ (highest force on plug).`;
+    }
+    drawBuckleChart();
+
+    // warnings
+    [['CIBP', J.tagA], ['New plug', J.tagB]].forEach(([nm, t]) => {
+        if (t.lo.overStress) msgs.push({ t: 'warn', m: `${nm} tag: CT stress exceeds ${fmt(v.designFactor)}% of yield at low μ` });
+        if (t.nom.overAvail) msgs.push({ t: 'warn', m: `${nm} tag: slack-off ${fmt(t.nom.slack)} lb exceeds ATW ${fmt(t.nom.avail)} lb` });
+        else if (t.nom.dW > 0 && t.nom.Fb / t.nom.dW < 0.9) msgs.push({ t: 'warn',
+            m: `${nm} tag: ${fmt(t.nom.slack)} lb slack-off → ${fmt(t.hi.Fb)}–${fmt(t.lo.Fb)} lb on plug`,
+            d: `Nominal ${fmt(t.nom.Fb)} lb at μ ${v.mu}. Helical buckling contact friction absorbs part of the slack-off; the weight indicator overstates the force on the plug. Lockup ceiling ${fmt(t.nom.FL)} lb.` });
+    });
+    if (J.fast) {
+        if (J.tLost === null) msgs.push({ t: 'warn', m: `Training pull ${fmt(v.fastPull)} ft/min started — nozzle stayed in cement (matched ${fmt(J.pullMatch, 1)} ft/min)` });
+        else msgs.push({ t: 'err', m: `TRAINING: ${endWord()} left cement at ${fmt(J.lostDepth)} ft after ${vd(J.lostV, 1)} — ${vd(J.Es, 1)} cement strung; competent TOC ${fmt(J.TocOut)} ft vs target ${fmt(v.targetTop)} ft`,
+            d: `Pulling at ${fmt(v.fastPull)} ft/min vs matched ${fmt(J.pullMatch, 1)} ft/min (pump rate ÷ wellbore capacity). Cement leaving the nozzle above the cement top falls through lighter well fluid and is not credited. Contaminated zone ${fmt(J.TocOut)}–${fmt(J.contamTop)} ft at ${vd(v.mixRatio, 2)} well fluid per bbl cement (illustrative).` });
+    } else if (v.fastPull <= J.pullMatch) msgs.push({ t: 'warn', m: `Training pull speed ${fmt(v.fastPull)} ft/min is not faster than the fill rate (${fmt(J.pullMatch, 1)} ft/min) — no stringing would occur` });
+    if (!J.headReached) msgs.push({ t: 'warn', m: `Cement (${vd(J.C, 1)}) is less than needed to build the ${fmt(J.Hd)} ft head (${vd(J.V0, 2)}); CT is not pulled while pumping` });
+    if (J.Hd >= J.Zb - J.TocOut) msgs.push({ t: 'warn', m: `Head (${fmt(J.Hd)} ft) ≥ plug height (${fmt(J.Zb - J.TocOut)} ft)` });
+    if (J.TocOut > v.targetTop + 0.5) msgs.push({ t: 'warn', m: `Final TOC ${fmt(J.TocOut)} ft is ${fmt(J.TocOut - v.targetTop)} ft below target top` });
+    if (J.maxP > v.maxPress) msgs.push({ t: 'warn', m: `Peak pump pressure ${fmt(J.maxP)} psi exceeds ${fmt(v.maxPress)} psi limit`, d: 'Mostly CT friction. Reduce rate or check rheology.' });
+    if (J.minMargin < 0) msgs.push({ t: 'warn', m: `Free-fall in CT predicted (${fmt(-J.minMargin)} psi underbalance at nozzle)`, d: 'Fluid column inside CT plus friction is less than the annulus pressure at the nozzle; cement would run ahead of the pumped volume.' });
+    if (J.S2 > J.Vpath) msgs.push({ t: 'warn', m: 'Spacer behind exceeds CT volume' });
+    showMessages(msgs);
+    buildSchedule();
+}
+
+// ---------- pump schedule ----------
+const SHORT = { disp: 'Disp', spacerA: 'Spcr A', cement: 'Cmt', spacerB: 'Spcr B', well: 'Well' };
+let schedRows = [], schedCur = -1;
+function fluidAtPump(V) { return V < J.S1 ? 'spacerA' : V < J.S1 + J.C ? 'cement' : V < J.S1 + J.C + J.S2 ? 'spacerB' : 'disp'; }
+function fluidAtNozzle(V) { const u = V - J.Vpath; return u < 0 ? 'disp' : fluidAtPump(u); }
+function buildSchedule() {
+    const body = document.getElementById('schedBody');
+    body.innerHTML = ''; schedRows = []; schedCur = -1;
+    if (!J) { document.getElementById('schedFoot').textContent = '–'; return; }
+    const incEl = document.getElementById('schedInc');
+    let inc = fromV(Number(incEl.value));
+    const bad = !(inc > 0);
+    incEl.classList.toggle('bad', bad);
+    if (bad) inc = 1;
+    if (J.Vend / inc > 1500) inc = J.Vend / 1500;
+    const t1 = J.phases[1];
+    const pts = [];
+    for (let V = 0; V < J.Vend - 1e-9; V += inc) pts.push({ V: Math.round(V * 1e6) / 1e6 });
+    const ev = [
+        [0, 'Start spacer ahead'], [J.S1, 'Start cement'], [J.S1 + J.C, 'Start spacer behind'],
+        [J.S1 + J.C + J.S2, 'Start displacement'], [J.Vpath, `Spacer ahead at ${endWord()}`],
+        [J.Vpath + J.S1, `Cement at ${endWord()}`], [J.V2end, J.headReached ? `Head ${fmt(J.Hd)} ft built — start pulling` : 'Head not reached'],
+        [J.Vend, 'Last cement out — pumps off']
+    ];
+    if (J.fast) ev.push([J.fast.V, `TRAINING: pull ${fmt(J.fast.vf)} ft/min started`]);
+    if (J.tLost !== null) ev.push([J.lostV, `${ctEnd === 'nozzle' ? 'Nozzle' : 'CT end'} out of cement — stringing begins`]);
+    ev.forEach(([V, note]) => { if (V <= J.Vend + 1e-9) pts.push({ V, note }); });
+    pts.sort((a, b) => a.V - b.V || (a.note ? 1 : -1));
+    const html = [];
+    const row = (cls, cells) => `<tr class="${cls}">${cells.map(c => `<td${c.cls ? ` class="${c.cls}"` : ''}${c.span ? ` colspan="${c.span}"` : ''}>${c.v}</td>`).join('')}</tr>`;
+    const dot = k => `<span class="dot" style="background:${COL[k].fill}"></span>`;
+    // RIH row
+    schedRows.push({ kind: 'rih', t: 0 });
+    html.push(row('ev', [{ v: '', cls: 'mk' }, { v: `RIH to ${fmt(J.Zb)} ft @ ${fmt(J.v.tripSpeed)} ft/min — ${fmtTime(t1)}`, cls: 'note', span: 8 }]));
+    pts.forEach(p => {
+        const st = stateAt(J, t1 + p.V / J.q + (p.V >= J.Vend - 1e-9 ? -1e-9 : 0));
+        const kP = fluidAtPump(Math.min(p.V, J.Vend - 1e-9)), kN = fluidAtNozzle(p.V);
+        schedRows.push({ kind: 'v', V: p.V });
+        const cells = [{ v: '', cls: 'mk' }, { v: vn(p.V, 1) }, { v: fmt(p.V / J.q, 1) },
+            p.note ? { v: p.note, cls: 'note' } : { v: `${dot(kP)}${SHORT[kP]} → ${dot(kN)}${SHORT[kN]}` },
+            { v: fmt(st.Zn) }, { v: st.speed ? fmt(Math.abs(st.speed), 1) : '0' },
+            { v: st.Ec > 0 ? fmt(st.TOC) : '—' }, { v: st.Ec > 0 ? fmt(st.head) : '—' },
+            { v: fmt(stateAt(J, t1 + Math.min(p.V, J.Vend - 1e-6) / J.q).pump) }];
+        html.push(row(p.note ? 'ev' : '', cells));
+    });
+    schedRows.push({ kind: 'pull', t: J.phases[3] });
+    html.push(row('ev', [{ v: '', cls: 'mk' }, { v: J.Es > 0
+        ? `Pumps off · competent TOC ${fmt(J.TocOut)} ft · strung/contaminated to ${fmt(J.contamTop)} ft · pull to ${fmt(J.pullTarget)} ft`
+        : `Pumps off · pull out of cement to ${fmt(J.pullTarget)} ft @ ${fmt(J.v.pullOutSpeed)} ft/min · TOC settles ${fmt(J.TocOut)} ft`, cls: 'note', span: 8 }]));
+    schedRows.push({ kind: 'pooh', t: J.phases[4] });
+    html.push(row('ev', [{ v: '', cls: 'mk' }, { v: `POOH @ ${fmt(J.v.tripSpeed)} ft/min — job complete at ${fmtTime(J.tEnd)}`, cls: 'note', span: 8 }]));
+    body.innerHTML = html.join('');
+    document.getElementById('schedFoot').textContent =
+        `${pts.length} rows · ${fmt(toV(inc), toV(inc) < 1 ? 2 : 1)} ${VUL()} steps · ${fmt(J.q, 2)} bpm · pull speed while laying ${fmt(J.pullMatch, 1)} ft/min · psi = surface pump pressure (incl. CT friction estimate)`;
+}
+function updateScheduleMarker(st) {
+    if (!schedRows.length) return;
+    let idx = 0;
+    if (st.phase >= 5) idx = schedRows.length - 1;
+    else if (st.phase === 4 || st.phase === 6) idx = st.phase === 6 ? schedRows.length - 1 : schedRows.length - 2;
+    else if (st.phase >= 2) {
+        for (let i = 0; i < schedRows.length; i++) if (schedRows[i].kind === 'v' && schedRows[i].V <= st.V + 1e-9) idx = i;
+    }
+    if (st.phase === 0) idx = -1;
+    if (idx === schedCur) return;
+    const trs = document.getElementById('schedBody').children;
+    if (schedCur >= 0 && trs[schedCur]) { trs[schedCur].classList.remove('cur'); trs[schedCur].firstChild.textContent = ''; }
+    schedCur = idx;
+    if (idx >= 0 && trs[idx]) {
+        trs[idx].classList.add('cur'); trs[idx].firstChild.textContent = '▶';
+        const box = document.getElementById('schedScroll'), tr = trs[idx];
+        const top = tr.offsetTop - box.clientHeight * 0.4;
+        if (tr.offsetTop < box.scrollTop + 20 || tr.offsetTop > box.scrollTop + box.clientHeight - 30) box.scrollTop = Math.max(0, top);
+    }
+}
+let scaleBreakOn = true;
+try { scaleBreakOn = localStorage.getItem('ctp_scalebreak') !== 'off'; } catch (e) {}
+function toggleScaleBreak() {
+    scaleBreakOn = !scaleBreakOn;
+    try { localStorage.setItem('ctp_scalebreak', scaleBreakOn ? 'on' : 'off'); } catch (e) {}
+    document.getElementById('btnScale').textContent = '⇕ Scale break: ' + (scaleBreakOn ? 'ON' : 'OFF');
+}
+document.getElementById('btnScale').textContent = '⇕ Scale break: ' + (scaleBreakOn ? 'ON' : 'OFF');
+function toggleSchedule() {
+    const p = document.getElementById('schedPanel');
+    p.classList.toggle('hidden');
+    document.getElementById('btnSched').textContent = p.classList.contains('hidden') ? '☰ Show schedule' : '☰ Hide schedule';
+}
+document.getElementById('schedInc').addEventListener('input', buildSchedule);
+
+function drawBuckleChart() {
+    const cv = document.getElementById('bkChart');
+    if (!cv || !J) return;
+    const v = J.v, A = J.tagA, Bt = J.tagB, N = A.nom, Lo = A.lo, Hi = A.hi;
+    const dpr = window.devicePixelRatio || 1, cw = cv.clientWidth || 300, ch = cv.clientHeight || 210;
+    cv.width = cw * dpr; cv.height = ch * dpr;
+    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = T.bg; c.fillRect(0, 0, cw, ch);
+    const L = 44, R = 8, Tp = 28, Bm = 28, pw = cw - L - R, phh = ch - Tp - Bm;
+    const flLo = isFinite(Lo.FL) ? Lo.FL : Math.max(v.tagLoad, v.tagLoad2);
+    const smax = Math.max(v.tagLoad, v.tagLoad2);
+    const xMax = niceCeil(Math.max(A.nom.avail, Bt.nom.avail, smax) * 1.04);
+    const yMax = niceCeil(Math.max(flLo * 1.1, Math.min(N.Fy, flLo * 1.5), 300));
+    const X = x => L + x / xMax * pw, Yc = y => Tp + phh - Math.min(y, yMax) / yMax * phh;
+    // grid + axes
+    c.strokeStyle = T.gaugeTrack; c.lineWidth = 1; c.font = '9px sans-serif'; c.fillStyle = T.muted2;
+    const xs = niceStep(xMax, 4), ys = niceStep(yMax, 4);
+    c.textAlign = 'center';
+    for (let x = 0; x <= xMax + 1e-6; x += xs) { c.beginPath(); c.moveTo(X(x), Tp); c.lineTo(X(x), Tp + phh); c.stroke(); c.fillText(fmt(x), X(x), Tp + phh + 11); }
+    c.textAlign = 'right';
+    for (let y = 0; y <= yMax + 1e-6; y += ys) { c.beginPath(); c.moveTo(L, Yc(y)); c.lineTo(L + pw, Yc(y)); c.stroke(); c.fillText(fmt(y), L - 4, Yc(y) + 3); }
+    c.strokeStyle = T.border; c.strokeRect(L + 0.5, Tp + 0.5, pw, phh);
+    c.textAlign = 'center'; c.fillStyle = T.muted; c.fillText('Slack-off at surface (lb)', L + pw / 2, ch - 3);
+    c.save(); c.translate(10, Tp + phh / 2); c.rotate(-Math.PI / 2); c.fillText('Force on plug (lb)', 0, 0); c.restore();
+    // friction band (between high-μ and low-μ transfer curves)
+    c.fillStyle = 'rgba(56,189,248,0.30)'; c.beginPath();
+    const n = 120;
+    for (let i = 0; i <= n; i++) { const x = xMax * i / n; const y = Lo.xfer(x); i ? c.lineTo(X(x), Yc(y)) : c.moveTo(X(x), Yc(y)); }
+    for (let i = n; i >= 0; i--) { const x = xMax * i / n; c.lineTo(X(x), Yc(Hi.xfer(x))); }
+    c.closePath(); c.fill();
+    // 1:1 (no friction)
+    c.strokeStyle = T.dim; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(X(0), Yc(0)); c.lineTo(X(Math.min(xMax, yMax)), Yc(Math.min(xMax, yMax))); c.stroke();
+    const hline = (y, col, txt, dash, w = 1.3) => {
+        if (!(y <= yMax)) return;
+        c.strokeStyle = col; c.setLineDash(dash); c.lineWidth = w; c.beginPath(); c.moveTo(L, Yc(y)); c.lineTo(L + pw, Yc(y)); c.stroke();
+        c.setLineDash([]); if (txt) { c.fillStyle = col; c.textAlign = 'left'; c.font = 'bold 9px sans-serif'; c.fillText(txt, L + 4, Yc(y) - 3); }
+    };
+    if (isFinite(N.FL)) hline(N.FL, T.warn, `Lockup ${fmt(N.FL)} lb (μ ${v.mu})`, [6, 3]);
+    hline(N.Fy, T.red, `Stress limit ${fmt(N.Fy)} lb`, [2, 2]);
+    // ATW lines
+    const vline = (x, txt) => {
+        if (x > xMax) return;
+        c.strokeStyle = T.red; c.lineWidth = 1; c.setLineDash([4, 2]); c.beginPath(); c.moveTo(X(x), Tp); c.lineTo(X(x), Tp + phh); c.stroke();
+        c.save(); c.translate(X(x) - 3, Tp + 3); c.rotate(-Math.PI / 2); c.setLineDash([]);
+        c.fillStyle = T.red; c.font = 'bold 8.5px sans-serif'; c.textAlign = 'right'; c.fillText(txt, 0, 0); c.restore();
+    };
+    vline(A.nom.avail, 'ATW CIBP');
+    if (Math.abs(Bt.nom.avail - A.nom.avail) > xMax * 0.03) vline(Bt.nom.avail, 'ATW plug');
+    c.setLineDash([]);
+    // nominal transfer curve
+    c.strokeStyle = T.accent; c.lineWidth = 2; c.beginPath();
+    for (let i = 0; i <= n; i++) { const x = xMax * i / n; const y = N.xfer(x); i ? c.lineTo(X(x), Yc(y)) : c.moveTo(X(x), Yc(y)); }
+    c.stroke();
+    // operating points with range bars
+    const pt = (t, shape, lab, below) => {
+        const px = X(Math.min(t.nom.slack, xMax));
+        c.strokeStyle = T.text; c.lineWidth = 1.5;
+        c.beginPath(); c.moveTo(px, Yc(t.hi.Fb)); c.lineTo(px, Yc(t.lo.Fb)); c.stroke();
+        [t.hi.Fb, t.lo.Fb].forEach(y => { c.beginPath(); c.moveTo(px - 4, Yc(y)); c.lineTo(px + 4, Yc(y)); c.stroke(); });
+        const py = Yc(t.nom.Fb), bad = t.nom.overStress || t.nom.overAvail;
+        c.fillStyle = bad ? T.red : (shape === 'c' ? T.good : T.warn);
+        c.beginPath();
+        if (shape === 'c') c.arc(px, py, 4.5, 0, Math.PI * 2); else c.rect(px - 4.5, py - 4.5, 9, 9);
+        c.fill(); c.strokeStyle = T.text; c.lineWidth = 1; c.stroke();
+        c.font = 'bold 9.5px sans-serif'; c.fillStyle = T.text;
+        const right = px > L + pw * 0.8; c.textAlign = right ? 'right' : 'left';
+        c.fillText(lab, px + (right ? -8 : 8), py + (below ? 14 : 4));
+    };
+    // ATW end points (hollow)
+    [[J.tagA, 'ATW'], [J.tagB, null]].forEach(([t, lab]) => {
+        const px = X(t.atw.nom.slack), py = Yc(t.atw.nom.Fb);
+        c.strokeStyle = T.red; c.lineWidth = 1.2;
+        c.beginPath(); c.moveTo(px, Yc(t.atw.hi.Fb)); c.lineTo(px, Yc(t.atw.lo.Fb)); c.stroke();
+        c.fillStyle = T.bg; c.beginPath(); c.arc(px, py, 4, 0, Math.PI * 2); c.fill(); c.lineWidth = 1.6; c.stroke();
+    });
+    const same = Math.abs(v.tagLoad - v.tagLoad2) < 1;
+    pt(J.tagA, 'c', same ? 'CIBP & plug' : 'CIBP', true);
+    if (!same) pt(J.tagB, 's', 'Plug', true);
+    // legend
+    c.font = '8.5px sans-serif'; c.textAlign = 'left';
+    c.fillStyle = T.accent; c.fillRect(L, 6, 14, 3); c.fillStyle = T.muted; c.fillText(`nominal μ ${v.mu}`, L + 18, 10);
+    c.fillStyle = 'rgba(56,189,248,0.45)'; c.fillRect(L + 92, 4, 14, 8); c.fillStyle = T.muted; c.fillText(`band μ ${v.muHi}–${v.muLo}`, L + 110, 10);
+    c.strokeStyle = T.dim; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(L, 19); c.lineTo(L + 14, 19); c.stroke(); c.setLineDash([]);
+    c.fillText('no friction (1:1)', L + 18, 22);
+    c.fillText(`helical buckling from ${fmt(N.Fhel)} lb`, L + 110, 22);
+}
+window.addEventListener('resize', () => drawBuckleChart());
+
+function showMessages(msgs) {
+    const box = document.getElementById('msgBox'), list = document.getElementById('msgList');
+    list.innerHTML = '';
+    msgs.forEach(({ t, m, d }) => {
+        const li = document.createElement('li'); li.className = t;
+        li.textContent = (t === 'err' ? '✖ ' : '⚠ ') + m; if (d) li.title = d; list.appendChild(li);
+    });
+    box.style.display = msgs.length ? 'block' : 'none';
+    box.classList.toggle('has-error', msgs.some(x => x.t === 'err'));
+}
+function setButtons(on) {
+    for (let i = 1; i <= 5; i++) document.getElementById('step' + i).disabled = !on;
+    ['btnRun', 'btnPause'].forEach(id => document.getElementById(id).disabled = !on);
+}
+
+// =====================================================================
+//  PLAYBACK
+// =====================================================================
+function playPhase(n) {
+    if (!J) return;
+    sim.t = J.phases[n - 1]; sim.stopAt = J.phases[n]; sim.playing = true; sim.last = null;
+}
+function runFullJob() { if (!J) return; if (sim.t >= J.tEnd - 1e-6) sim.t = 0; sim.stopAt = J.tEnd; sim.playing = true; sim.last = null; }
+function togglePause() {
+    if (!J) return;
+    if (sim.playing) sim.playing = false;
+    else { if (sim.stopAt <= sim.t + 1e-9) sim.stopAt = J.tEnd; sim.playing = true; sim.last = null; }
+}
+function resetSim() { sim.t = 0; sim.playing = false; sim.stopAt = Infinity; sim.fast = null; recalc(); }
+function toggleFast() {
+    if (!J) return;
+    if (sim.fast) { sim.fast = null; recalc(); return; }
+    const st = stateAt(J, sim.t);
+    if (!st.pumping) return;
+    sim.fast = { tf: sim.t };
+    recalc();
+    sim.stopAt = J.phases[3]; sim.playing = true; sim.last = null;
+}
+function updateButtons(phase) {
+    for (let i = 1; i <= 5; i++) {
+        const b = document.getElementById('step' + i);
+        b.classList.toggle('active', i === phase);
+        b.classList.toggle('done', i < phase);
+    }
+    document.getElementById('btnPause').textContent = sim.playing ? '❚❚ PAUSE' : '▶ RESUME';
+    const bf = document.getElementById('btnFast');
+    const canFast = !!J && (phase === 2 || phase === 3);
+    bf.disabled = !sim.fast && !canFast;
+    bf.classList.toggle('on', !!sim.fast);
+    bf.textContent = sim.fast ? '✖ Clear training pull (restore matched speed)'
+        : (canFast ? '⚠ TRAINING: Pull Faster Than Fill Rate — click now' : '⚠ TRAINING: Pull Faster Than Fill Rate (available while pumping)');
+}
+
+// =====================================================================
+//  RENDERING
+// =====================================================================
+function resize() {
+    const r = wrap.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    W = Math.floor(r.width); H = Math.floor(r.height);
+    canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+new ResizeObserver(resize).observe(wrap);
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function niceCeil(x) { if (x <= 0) return 100; const p = Math.pow(10, Math.floor(Math.log10(x))); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= x) return m * p; return 10 * p; }
+function niceStep(range, n) { const raw = range / n, p = Math.pow(10, Math.floor(Math.log10(raw))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= raw) return m * p; return 10 * p; }
+
+function layout() {
+    const pad = 10, readH = 64;
+    const rightW = Math.max(140, Math.min(205, W * 0.22));
+    const rightX = W - rightW - pad;
+    const rMax = Math.max(48, Math.min(72, H * 0.09));
+    const rx = 24 + rMax, ry = 16 + rMax;
+    const wellTop = ry + rMax + 34, wellBot = H - readH - 22;
+    const Hh = Math.max(30, Math.min(64, W * 0.06));
+    const cx = W < 700 ? Math.max(rx + rMax + 40, 120 + Hh) : Math.max(rx + rMax + 100, 232 + Hh);
+    const labX = cx + Hh + 18;
+    return { pad, readH, rightW, rightX, rMax, rx, ry, wellTop, wellBot, Hh, cx, labX };
+}
+
+// Depth -> y with an optional scale break: upper hole compressed, plug zone expanded.
+function makeDepthMap(Lo) {
+    const plugTop = Math.min(J.v.targetTop, J.TocOut, J.pullTarget);
+    const zoneH = J.Zb - plugTop;
+    const dZ = Math.max(0, plugTop - Math.max(60, 0.25 * zoneH));
+    const dBot = J.Zb + Math.max(15, 0.06 * (J.Zb - dZ));
+    const y0 = Lo.wellTop, y1 = Lo.wellBot;
+    if (!scaleBreakOn || dZ < 0.3 * dBot) {
+        return { brk: false, dBot, Y: d => y0 + d / dBot * (y1 - y0), segs: [[0, dBot, y0, y1]] };
+    }
+    const yB = y0 + 0.24 * (y1 - y0), gap = 16;
+    const Y = d => d <= dZ ? y0 + d / dZ * (yB - y0) : yB + gap + (d - dZ) / (dBot - dZ) * (y1 - yB - gap);
+    return { brk: true, dZ, dBot, yB, gap, Y, segs: [[0, dZ, y0, yB], [dZ, dBot, yB + gap, y1]] };
+}
+
+function draw(st, now) {
+    const Lo = layout();
+    ctx.fillStyle = T.bg; ctx.fillRect(0, 0, W, H);
+    const M = makeDepthMap(Lo);
+    const Y = M.Y;
+    const { cx, Hh } = Lo;
+    const ctH = Math.max(4, Hh * J.v.ctOD / J.v.csgID);
+    const ctI = ctH * J.v.ctID / J.v.ctOD;
+
+    drawWellColumn(st, Lo, M, now, ctH, ctI);
+    drawReelSchematic(st, Lo, now);
+
+    // depth axis per segment
+    ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.strokeStyle = T.hardware; ctx.lineWidth = 1;
+    const ax = cx - Hh - 46;
+    M.segs.forEach(([da, db, ya, yb], i) => {
+        const step = niceStep(db - da, Math.max(2, Math.round((yb - ya) / 55)));
+        for (let d = Math.ceil(da / step) * step; d <= db + 1e-6; d += step) {
+            if (i === 1 && d < da + step * 0.3) continue;
+            if (d === 0) continue;                       // surface is the wellhead; keeps clear of the reel readout
+            const y = Y(d);
+            ctx.fillStyle = T.muted2; ctx.fillText(fmt(d), ax, y + 3);
+            ctx.beginPath(); ctx.moveTo(ax + 3, y); ctx.lineTo(ax + 8, y); ctx.stroke();
+        }
+    });
+    ctx.save(); ctx.translate(ax - 38, (Lo.wellTop + Lo.wellBot) / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center'; ctx.fillStyle = T.muted2; ctx.font = '10px sans-serif';
+    ctx.fillText('DEPTH (ft)', 0, 0); ctx.restore();
+
+    // head bracket (left of hole)
+    if (st.head > 0.5) {
+        const xb = cx - Hh - 14, ya = Y(st.TOC), yb = Y(st.Zn);
+        ctx.strokeStyle = T.warn; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(xb + 7, ya); ctx.lineTo(xb, ya); ctx.lineTo(xb, yb); ctx.lineTo(xb + 7, yb); ctx.stroke();
+        if (yb - ya > 40) {
+            ctx.save(); ctx.translate(xb - 6, (ya + yb) / 2); ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = T.warn; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(`HEAD ${fmt(st.head)} ft`, 0, 0); ctx.restore();
+        }
+    }
+    // target top line
+    const yt = Y(J.v.targetTop);
+    ctx.strokeStyle = T.target; ctx.setLineDash([6, 4]); ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.moveTo(cx - Hh - 6, yt); ctx.lineTo(cx + Hh + 8, yt); ctx.stroke(); ctx.setLineDash([]);
+
+    // labels
+    const L = [], xr = cx + Hh + 4;
+    const cmp = (Lo.rightX - 12 - Lo.labX) < 150;            // compact labels when the column is narrow
+    const lb = (longT, shortT, d) => (cmp ? shortT : longT) + ' ' + fmt(d) + (cmp ? '' : ' ft');
+    L.push({ y: yt, x0: xr + 4, c: T.target, t: lb('Target top', 'Target', J.v.targetTop) });
+    if (st.Ec > 0) L.push({ y: Y(st.TOC), x0: xr, c: COL.cement.text, t: lb(st.Es > 0 ? 'Comp. TOC' : 'Cement top', st.Es > 0 ? 'Comp TOC' : 'TOC', st.TOC) });
+    if (st.Es > 0 && st.CTOP < st.TOC - 0.5) L.push({ y: Y(st.CTOP), x0: xr, c: COL.strung.text, t: lb('Strung cmt top', 'Strung', st.CTOP) });
+    if (J.tLost !== null && st.t >= J.tLost) L.push({ y: Y(J.lostDepth), x0: xr, c: T.red, t: lb((ctEnd === 'nozzle' ? 'Nozzle' : 'CT end') + ' left cmt', 'Left cmt', J.lostDepth) });
+    if (st.E1 > 0 && st.SPT < st.CTOP - 0.5) L.push({ y: Y(st.SPT), x0: xr, c: COL.spacerA.text, t: lb('Spacer top', 'Spacer', st.SPT) });
+    if (st.Zn > 0) L.push({ y: Y(st.Zn), x0: cx + ctH, c: T.ctSteel, t: lb(ctEnd === 'nozzle' ? 'Nozzle' : 'CT end', ctEnd === 'nozzle' ? 'Nozzle' : 'CT end', st.Zn) });
+    if (st.phase < 4 && !st.lost) L.push({ y: Y(J.TocOut), x0: xr, c: T.muted, t: lb('Final TOC', 'Final', J.TocOut) });
+    L.push({ y: Y(J.Zb), x0: xr, c: T.muted, t: lb('CIBP', 'CIBP', J.Zb) });
+    const off = J.L - st.Zn;
+    st.pipe.filter(s => s.f.k === 'cement' && s.x1 - s.x0 > 1).forEach(s => {
+        const a = Math.max(s.x0, off) - off, b = s.x1 - off;
+        if (b > 0 && a < st.Zn) L.push({ y: Y(Math.max(a, 0)), x0: cx + ctI, c: COL.cement.text,
+            t: cmp ? `Cmt in CT ${fmt(Math.max(a, 0))}` : `Cmt in CT ${fmt(Math.max(a, 0))}–${fmt(Math.min(b, st.Zn))}` });
+    });
+    drawLabels(L, Lo.labX, Lo.wellTop, Lo.wellBot, 14, Lo.rightX - 12);
+
+    if (M.brk) {
+        ctx.fillStyle = T.muted2; ctx.font = 'italic 9.5px sans-serif'; ctx.textAlign = 'left';
+        let sb = `Scale break: 0–${fmt(M.dZ)} ft compressed`;
+        if (ctx.measureText(sb).width > Lo.rightX - Lo.labX - 24) sb = 'Scale break';
+        ctx.fillText(sb, Lo.labX + 14, M.yB + M.gap / 2 + 3);
+    }
+    drawRight(st, Lo);
+    drawReadout(st, Lo);
+}
+
+function drawWellColumn(st, Lo, M, now, ctH, ctI) {
+    const { cx, Hh, wellTop, wellBot } = Lo;
+    const Y = M.Y, wall = 5;
+    const x0 = cx - Hh - wall - 30, x1 = cx + Hh + wall + 30;
+    ctx.save(); ctx.beginPath(); ctx.rect(x0, wellTop - 2, x1 - x0, wellBot - wellTop + 4); ctx.clip();
+    for (let y = wellTop, i = 0; y < wellBot; y += 20, i++) { ctx.fillStyle = i % 2 ? T.band2 : T.band1; ctx.fillRect(x0, y, x1 - x0, 20); }
+    ctx.fillStyle = T.steel;
+    ctx.fillRect(cx - Hh - wall, Y(0), wall, wellBot - Y(0)); ctx.fillRect(cx + Hh, Y(0), wall, wellBot - Y(0));
+    ctx.fillStyle = COL.well.fill; ctx.globalAlpha = 0.45; ctx.fillRect(cx - Hh, Y(J.Zb), 2 * Hh, wellBot - Y(J.Zb)); ctx.globalAlpha = 1;
+    for (const l of st.layers) {
+        if (l.bot - l.top <= 0) continue;
+        const ya = Y(l.top) - 0.3, hgt = Y(l.bot) - Y(l.top) + 0.6;
+        ctx.fillStyle = COL[l.k].fill; ctx.fillRect(cx - Hh, ya, 2 * Hh, hgt);
+        if (l.k === 'strung') {     // stringers of cement in well fluid
+            ctx.save(); ctx.beginPath(); ctx.rect(cx - Hh, ya, 2 * Hh, hgt); ctx.clip();
+            ctx.strokeStyle = COL.well.fill; ctx.lineWidth = 3.5;
+            for (let k = -hgt - 2 * Hh; k < 2 * Hh + hgt; k += 9) {
+                ctx.beginPath(); ctx.moveTo(cx - Hh + k, ya); ctx.lineTo(cx - Hh + k + hgt * 0.6, ya + hgt); ctx.stroke();
+            }
+            ctx.strokeStyle = T.red; ctx.lineWidth = 1.5; ctx.strokeRect(cx - Hh + 0.75, ya + 0.75, 2 * Hh - 1.5, hgt - 1.5);
+            ctx.restore();
+        }
+    }
+    if (J.tLost !== null && st.t >= J.tLost) {   // where the nozzle came out of the cement
+        const yl = Y(J.lostDepth);
+        ctx.strokeStyle = T.red; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+        ctx.beginPath(); ctx.moveTo(cx - Hh - 26, yl); ctx.lineTo(cx + Hh + 6, yl); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const yb = Y(J.Zb);
+    ctx.fillStyle = T.hardware; ctx.fillRect(cx - Hh, yb, 2 * Hh, 10);
+    ctx.strokeStyle = T.muted2; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - Hh, yb); ctx.lineTo(cx + Hh, yb + 10); ctx.moveTo(cx + Hh, yb); ctx.lineTo(cx - Hh, yb + 10); ctx.stroke();
+    if (st.Zn > 0) {
+        const off = J.L - st.Zn;
+        for (const s of st.pipe) {
+            const da = Math.max(s.x0, off) - off, db = s.x1 - off;
+            if (db <= da) continue;
+            ctx.fillStyle = COL[s.f.k].fill; ctx.fillRect(cx - ctI, Y(da) - 0.3, 2 * ctI, Y(db) - Y(da) + 0.6);
+        }
+        ctx.fillStyle = T.ctSteel;
+        ctx.fillRect(cx - ctH, Y(0), ctH - ctI, Y(st.Zn) - Y(0)); ctx.fillRect(cx + ctI, Y(0), ctH - ctI, Y(st.Zn) - Y(0));
+        const yn = Y(st.Zn);
+        const exitCol = COL[st.V > J.Vpath + J.S1 ? 'cement' : 'spacerA'].fill;
+        const flowing = st.pumping && st.V > J.Vpath, p = (now / 110) % 10;
+        if (ctEnd === 'nozzle') {
+            ctx.beginPath(); ctx.moveTo(cx - ctH - 2, yn - 9); ctx.lineTo(cx + ctH + 2, yn - 9); ctx.lineTo(cx, yn); ctx.closePath(); ctx.fill();
+            if (flowing) {
+                ctx.strokeStyle = exitCol; ctx.lineWidth = 1.6;
+                for (const k of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + k * 3, yn + 2); ctx.lineTo(cx + k * (8 + p), yn + 4 + p * 0.7); ctx.stroke(); }
+            }
+        } else {
+            if (ctEnd === 'straight') {                  // CT straightener body just above the open end
+                const sw = Math.min(ctH * 1.7, ctH + 6), th = 22;
+                ctx.fillStyle = T.hardware; ctx.fillRect(cx - sw, yn - th - 3, 2 * sw, th);
+                ctx.fillStyle = T.ctSteel;
+                for (let k = 0; k < 3; k++) {            // roller / blade marks
+                    const yy = yn - th - 3 + 4 + k * 6.5;
+                    ctx.fillRect(cx - sw - 2, yy, 3, 3.5); ctx.fillRect(cx + sw - 1, yy, 3, 3.5);
+                }
+                ctx.strokeStyle = T.steel; ctx.lineWidth = 1; ctx.strokeRect(cx - sw + 0.5, yn - th - 2.5, 2 * sw - 1, th - 1);
+                ctx.fillStyle = T.ctSteel;
+            }
+            // square-cut open end: thick wall lips with dark edge, bore left open
+            const lip = Math.max(2, ctH - ctI + 1);
+            ctx.fillStyle = T.ctSteel;
+            ctx.fillRect(cx - ctH - 1, yn - 5, lip + 1, 5); ctx.fillRect(cx + ctI, yn - 5, lip + 1, 5);
+            ctx.strokeStyle = T.steelEdge; ctx.lineWidth = 1;
+            ctx.strokeRect(cx - ctH - 0.5, yn - 4.5, lip, 4); ctx.strokeRect(cx + ctI + 0.5, yn - 4.5, lip, 4);
+            if (flowing) {                               // straight-down discharge chevrons
+                ctx.strokeStyle = T.text; ctx.lineWidth = 1.4;
+                for (let k = 0; k < 2; k++) {
+                    const yy = yn + 3 + ((p * 0.9 + k * 5) % 10);
+                    ctx.beginPath(); ctx.moveTo(cx - 3.5, yy - 3); ctx.lineTo(cx, yy); ctx.lineTo(cx + 3.5, yy - 3); ctx.stroke();
+                }
+            }
+        }
+    }
+    if (M.brk) {   // torn-paper scale break across the column
+        const yA = M.yB, yC = M.yB + M.gap;
+        ctx.fillStyle = T.bg; ctx.beginPath();
+        const zz = (yy, dir) => { for (let x = x0, k = 0; x <= x1 + 8; x += 8, k++) ctx.lineTo(x, yy + (k % 2 ? 3 : -3) * dir); };
+        ctx.moveTo(x0, yA); zz(yA + 2, 1); ctx.lineTo(x1 + 8, yC); for (let x = x1 + 8, k = 0; x >= x0; x -= 8, k++) ctx.lineTo(x, yC - 2 + (k % 2 ? 3 : -3)); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = T.muted2; ctx.lineWidth = 1.2;
+        for (const yy of [yA + 2, yC - 2]) { ctx.beginPath(); ctx.moveTo(x0, yy); zz(yy, 1); ctx.stroke(); }
+    }
+    ctx.restore();
+    // wellhead + injector + gooseneck
+    ctx.fillStyle = T.hardware; ctx.fillRect(cx - Hh - 14, wellTop - 3, 2 * Hh + 28, 4);
+    ctx.fillRect(cx - 16, wellTop - 12, 32, 9);
+    ctx.fillStyle = T.muted2; ctx.fillRect(cx - 24, wellTop - 36, 48, 22);
+    ctx.fillStyle = T.bg; ctx.font = 'bold 8.5px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('INJECTOR', cx, wellTop - 22);
+}
+
+function drawReelSchematic(st, Lo, now) {
+    const { rx, ry, rMax, cx, wellTop } = Lo;
+    const rc = rMax * 0.34, rf = rMax * 0.9;           // core and fully-spooled radius
+    const onReel = J.L - st.Zn;                          // ft still on reel
+    const rad = x => Math.sqrt(rc * rc + (rf * rf - rc * rc) * Math.max(0, x) / J.L);
+    const rOut = rad(onReel);
+    // flange
+    ctx.fillStyle = T.panel; ctx.beginPath(); ctx.arc(rx, ry, rMax, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = T.steel; ctx.lineWidth = 3; ctx.stroke();
+    // fluid in the wraps: inner wraps = reel inlet (pump side), outer wraps = toward the well
+    const segs = st.pipe.filter(s => s.x0 < onReel).map(s => ({ f: s.f, a: s.x0, b: Math.min(s.x1, onReel) }));
+    segs.sort((p, q) => q.a - p.a);                       // draw outer first
+    for (const s of segs) {
+        ctx.fillStyle = COL[s.f.k].fill;
+        ctx.beginPath(); ctx.arc(rx, ry, rad(s.b), 0, Math.PI * 2); ctx.arc(rx, ry, rad(s.a), 0, Math.PI * 2, true); ctx.fill();
+    }
+    // wrap lines
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 0.8;
+    for (let r = rc + 3; r < rOut; r += 3.2) { ctx.beginPath(); ctx.arc(rx, ry, r, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.strokeStyle = T.ctSteel; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(rx, ry, rOut, 0, Math.PI * 2); ctx.stroke();
+    // rotating hub spokes: angle follows footage paid out
+    const ang = -(st.Zn / 40);
+    ctx.fillStyle = T.hardware; ctx.beginPath(); ctx.arc(rx, ry, rc, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = T.steel; ctx.lineWidth = 3;
+    for (let k = 0; k < 4; k++) {
+        const a = ang + k * Math.PI / 2;
+        ctx.beginPath(); ctx.moveTo(rx + Math.cos(a) * 5, ry + Math.sin(a) * 5); ctx.lineTo(rx + Math.cos(a) * (rc - 2), ry + Math.sin(a) * (rc - 2)); ctx.stroke();
+    }
+    ctx.fillStyle = T.steel; ctx.beginPath(); ctx.arc(rx, ry, 4, 0, Math.PI * 2); ctx.fill();
+    // pump -> swivel line (surface lines fluid)
+    const lf = st.lines.length ? st.lines[st.lines.length - 1].f.k : 'disp';
+    ctx.strokeStyle = COL[lf].fill; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx, ry + rMax + 14); ctx.lineTo(rx - rMax + 4, ry + rMax + 14); ctx.stroke();
+    ctx.fillStyle = T.muted; ctx.font = 'bold 8.5px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(st.pumping ? `PUMP ${fmt(J.q, 2)} BPM → SWIVEL` : 'PUMP OFF', rx - rMax + 2, ry + rMax + 26);
+    // coil leaving the top of the reel, over the gooseneck, into the injector
+    const gx = cx - 22, gy = wellTop - 58;
+    ctx.strokeStyle = T.ctSteel; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(rx, ry - rOut); ctx.lineTo(gx, gy - 22);
+    ctx.arc(gx, gy, 22, -Math.PI / 2, 0); ctx.lineTo(cx, wellTop - 36); ctx.stroke();
+    ctx.strokeStyle = T.muted2; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(gx, gy, 26, -Math.PI * 0.95, 0.05); ctx.stroke();
+    // direction + footage
+    let dir = 'REEL STOPPED', col = T.muted;
+    if (st.speed > 0) { dir = '▼ UNSPOOLING'; col = T.accent; }
+    else if (st.speed < 0) { dir = '▲ SPOOLING'; col = st.training ? T.red : (st.phase === 3 ? T.good : T.warn); }
+    const tx = rx - rMax + 2, ty = ry + rMax + 42;
+    ctx.fillStyle = col; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(dir + (st.speed !== 0 ? `  ${fmt(Math.abs(st.speed), 1)} ft/min` : ''), tx, ty);
+    ctx.fillStyle = T.muted; ctx.font = '10px sans-serif';
+    ctx.fillText(`Reel ${fmt(onReel)} ft · Hole ${fmt(st.Zn)} ft`, tx, ty + 13);
+}
+
+function drawLabels(labels, x, yMin, yMax, gap, xMax) {
+    if (!labels.length) return;
+    labels.sort((a, b) => a.y - b.y);
+    let prev = yMin - gap;
+    labels.forEach(l => { l.ly = Math.max(l.y, prev + gap); prev = l.ly; });
+    if (labels[labels.length - 1].ly > yMax) {
+        let next = yMax + gap;
+        for (let i = labels.length - 1; i >= 0; i--) { labels[i].ly = Math.min(labels[i].ly, next - gap); next = labels[i].ly; }
+    }
+    ctx.font = '10.5px sans-serif'; ctx.textAlign = 'left';
+    labels.forEach(l => {
+        ctx.strokeStyle = T.leader; ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.moveTo(l.x0, l.y); ctx.lineTo(x - 6, l.ly); ctx.lineTo(x - 2, l.ly); ctx.stroke();
+        ctx.fillStyle = l.c; let t = l.t;
+        if (xMax) while (t.length > 4 && ctx.measureText(t).width > xMax - x) t = t.slice(0, -2) + '…';
+        ctx.fillText(t, x, l.ly + 3);
+    });
+}
+
+function drawGauge(x, y, r, title, value, min, max, unit, col, mark, dec = 0) {
+    const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25;
+    ctx.fillStyle = T.gaugeFace; ctx.strokeStyle = T.border; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = T.gaugeTrack; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r - 7, a0, a1); ctx.stroke();
+    ctx.strokeStyle = T.dim; ctx.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) {
+        const a = a0 + (a1 - a0) * i / 10, r1 = r - (i % 5 === 0 ? 13 : 10);
+        ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * (r - 4), y + Math.sin(a) * (r - 4)); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); ctx.stroke();
+    }
+    if (mark !== undefined) {
+        const am = a0 + (a1 - a0) * Math.min(1, Math.max(0, (mark - min) / (max - min)));
+        ctx.strokeStyle = T.target; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x + Math.cos(am) * (r - 2), y + Math.sin(am) * (r - 2)); ctx.lineTo(x + Math.cos(am) * (r - 14), y + Math.sin(am) * (r - 14)); ctx.stroke();
+    }
+    const a = a0 + (a1 - a0) * Math.min(1, Math.max(0, (value - min) / (max - min)));
+    ctx.strokeStyle = col; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * (r - 9), y + Math.sin(a) * (r - 9)); ctx.stroke();
+    ctx.fillStyle = T.muted; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'center'; ctx.fillStyle = T.muted; ctx.font = 'bold 10px sans-serif';
+    ctx.fillText(title, x, y - r - 6);
+    ctx.font = '9px sans-serif'; ctx.fillStyle = T.muted2;
+    ctx.fillText(fmt(min), x - r * 0.62, y + r * 0.86); ctx.fillText(fmt(max), x + r * 0.62, y + r * 0.86);
+    ctx.fillStyle = col; ctx.font = 'bold 11px monospace';
+    ctx.fillText(fmt(value, dec) + ' ' + unit, x, y + r * 0.45);
+}
+
+function drawRight(st, Lo) {
+    const x = Lo.rightX, w = Lo.rightW;
+    let y = 24;
+    ctx.textAlign = 'left'; ctx.fillStyle = T.text; ctx.font = 'bold 10px sans-serif';
+    ctx.fillText('FLUIDS', x + 8, y);
+    const items = [['well', `Well fluid (${J.v.wellDensity} ppg)`], ['spacerA', `Spacer ahead (${J.v.spADens} ppg)`],
+        ['cement', `Cement (${J.v.cmtDens} ppg)`], ['spacerB', `Spacer behind (${J.v.spBDens} ppg)`], ['disp', `Displacement (${J.v.dispDens} ppg)`]];
+    if (J.Es > 0) items.push(['strung', `Strung cmt (${fmt((J.v.cmtDens + J.mix * J.v.wellDensity) / (1 + J.mix), 1)} ppg mix)`]);
+    items.forEach(([k, t], i) => {
+        ctx.fillStyle = COL[k].fill; ctx.fillRect(x + 8, y + 7 + i * 14, 12, 9);
+        if (k === 'strung') { ctx.strokeStyle = COL.well.fill; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 9, y + 15 + i * 14); ctx.lineTo(x + 19, y + 8 + i * 14); ctx.stroke(); ctx.strokeStyle = T.red; ctx.lineWidth = 1; ctx.strokeRect(x + 8.5, y + 7.5 + i * 14, 11, 8); }
+        ctx.fillStyle = T.muted; ctx.font = '10px sans-serif'; ctx.fillText(t, x + 26, y + 15 + i * 14);
+    });
+    y += 7 + items.length * 14 + 8;
+    const avail = Lo.wellBot - y - 60;
+    const r = Math.max(26, Math.min(44, w / 2 - 24, avail / 8.6));
+    const gap = 2 * r + 26, cx = x + w / 2;
+    let gy = y + r + 18;
+    const pCol = st.freeFall ? T.warn : (st.pump > J.v.maxPress ? T.red : T.accent);
+    drawGauge(cx, gy, r, 'CT PUMP PRESSURE', st.pump, 0, J.gaugePmax, 'PSI', pCol, J.v.maxPress);
+    gy += gap;
+    drawGauge(cx, gy, r, st.lost && st.pumping ? `${endWord(true)} ABOVE CEMENT!` : `CEMENT HEAD ABOVE ${endWord(true)}`, st.lost && st.pumping ? st.headSigned : st.head, 0, niceCeil(J.Hd * 1.5), 'FT',
+              st.lost && st.pumping ? T.red : (Math.abs(st.head - J.Hd) < 1 ? T.good : T.warn), J.Hd);
+    gy += gap;
+    const spMax = niceCeil(Math.max(J.v.tripSpeed, J.pullMatch, J.v.pullOutSpeed, J.fast ? J.fast.vf : 0) * 1.1);
+    drawGauge(cx, gy, r, st.speed < 0 ? 'CT SPEED ↑ PULLING' : (st.speed > 0 ? 'CT SPEED ↓ RIH' : 'CT SPEED'), Math.abs(st.speed), 0, spMax, 'FT/MIN',
+              st.training ? T.red : (st.phase === 3 ? T.good : T.accent), J.pullMatch, 1);
+    gy += gap;
+    drawGauge(cx, gy, r, 'VOLUME PUMPED', toV(st.V), 0, niceCeil(toV(J.Vend)), VUC(), T.accent, undefined, 1);
+}
+
+function drawReadout(st, Lo) {
+    const y = H - Lo.readH;
+    ctx.fillStyle = T.panel; ctx.fillRect(Lo.pad, y, W - 2 * Lo.pad, Lo.readH - 8);
+    ctx.strokeStyle = T.border; ctx.lineWidth = 1; ctx.strokeRect(Lo.pad + 0.5, y + 0.5, W - 2 * Lo.pad - 1, Lo.readH - 9);
+    ctx.fillStyle = T.text; ctx.textAlign = 'left';
+    const x = Lo.pad + 10, maxW = W - 2 * Lo.pad - 20;
+    const line1 = `TIME ${fmtTime(st.t)} · ${endWord(true)} ${fmt(st.Zn)} FT · TOC ${st.Ec > 0 ? fmt(st.TOC) + ' FT' : '—'} · CMT OUT ${vn(st.Ec, 1)}/${vn(J.C, 1)} ${VUC()} · PUMP ${st.pumping ? fmt(J.q, 2) + ' BPM' : 'OFF'}`;
+    let fs = 10;
+    do { ctx.font = `bold ${fs}px monospace`; } while (ctx.measureText(line1).width > maxW && (fs -= 0.5) > 7.5);
+    const fit = t => { while (t.length > 8 && ctx.measureText(t).width > maxW) t = t.slice(0, -2) + '…'; return t; };
+    ctx.fillText(fit(line1), x, y + 15);
+    ctx.fillText(fit(`ANN@END ${fmt(st.pann)} · CT HYD@END ${fmt(st.pct)} · CT FRIC ${fmt(st.fric)}` + (ctEnd === 'nozzle' ? ` · NOZ ΔP ${fmt(st.nozDP)}` : '') + ` · CIBP ${fmt(st.Pbase)} PSI`), x, y + 30);
+    const names = ['STANDBY — CT AT SURFACE', 'RIH TO PLUG BASE', 'PUMPING — CT STATIONARY, BUILDING CEMENT HEAD', 'LAYING PLUG — CT PULLED AT MATCHED SPEED',
+                   `PUMPS OFF — PULLING ${endWord(true)} OUT OF CEMENT`, 'POOH', 'JOB COMPLETE — CT AT SURFACE'];
+    let txt = names[st.phase], col = '--accent-blue';
+    if (st.phase === 2 && st.V < J.Vpath + J.S1) txt = `PUMPING — ${st.V < J.Vpath ? 'FLUIDS TRAVELLING DOWN CT' : `SPACER EXITING ${endWord(true)}`}`;
+    if (st.phase === 3) { col = '--accent-green'; txt += ` ${fmt(J.pullMatch, 1)} FT/MIN`; }
+    if (st.training) {
+        col = '--accent-red';
+        txt = `TRAINING — PULLING ${fmt(J.fast.vf)} FT/MIN > FILL RATE ${fmt(J.pullMatch, 1)} FT/MIN` +
+              (st.lost ? ` · ${endWord(true)} ${fmt(-st.headSigned)} FT ABOVE CEMENT — STRINGING` : ` · HEAD ${fmt(st.head)} FT AND FALLING`);
+    }
+    if (st.phase >= 4 && J.Es > 0) { col = '--accent-red'; txt += ` · BAD PLUG: COMPETENT TOC ${fmt(J.TocOut)} FT, ${vn(J.Es, 1)} ${VUC()} STRUNG`; }
+    if (st.freeFall) { txt += ' · FREE-FALL'; col = '--accent-amber'; }
+    if (st.pump > J.v.maxPress) { txt += ' · OVER PRESSURE LIMIT'; col = '--accent-red'; }
+    ctx.fillStyle = cssVar(col);
+    ctx.fillText(fit(`STATE: ${txt}`), x, y + 45);
+}
+
+// =====================================================================
+//  LOOP
+// =====================================================================
+function loop(now) {
+    requestAnimationFrame(loop);
+    if (!W || !H) return;
+    if (!J) {
+        ctx.fillStyle = T.bg; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = T.red; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('INPUT ERROR — correct the highlighted fields', W / 2, H / 2); return;
+    }
+    if (sim.playing) {
+        if (sim.last !== null) {
+            const speed = Number(document.getElementById('simSpeed').value);
+            sim.t += (now - sim.last) / 1000 * speed / 60;     // job minutes
+        }
+        sim.last = now;
+        if (sim.t >= sim.stopAt) { sim.t = sim.stopAt; sim.playing = false; }
+    } else sim.last = null;
+    const st = stateAt(J, Math.min(sim.t, J.tEnd + 1e-6));
+    draw(st, now);
+    updateButtons(st.phase);
+    updateScheduleMarker(st);
+}
+
+setCtEnd(ctEnd);
+recalc();
+resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
